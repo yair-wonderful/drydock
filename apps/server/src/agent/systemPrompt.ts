@@ -15,8 +15,10 @@
  */
 
 import { AGENTIC_UX_PROMPT } from "./agenticUxGuardrails.ts";
+import { CRITIQUE_PROMPT } from "./designCritique.ts";
 import { DESIGN_GUARDRAILS_PROMPT } from "./designGuardrails.ts";
 import { getReviewerVoicePrompt } from "./designReviewCorpus.ts";
+import { UX_FOUNDATIONS_PROMPT } from "./uxFoundations.ts";
 import { VISUAL_DESIGN_PROMPT } from "./visualDesignPrinciples.ts";
 
 const ENTRY_POINT_EXAMPLE = `import Dashboard from "./Dashboard";
@@ -156,9 +158,13 @@ ${COMPONENT_EXAMPLE}\`\`\`
 export const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}
 ${AGENTIC_UX_PROMPT}
 
+${UX_FOUNDATIONS_PROMPT}
+
 ${VISUAL_DESIGN_PROMPT}
 
 ${DESIGN_GUARDRAILS_PROMPT}
+
+${CRITIQUE_PROMPT}
 
 ${getReviewerVoicePrompt()}
 `;

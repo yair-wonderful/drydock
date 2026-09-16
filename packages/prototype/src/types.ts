@@ -133,13 +133,78 @@ export type DesignReviewRubric = {
 	 * matter. */
 	stateCoverage: string;
 	/**
-	 * Comments you expect a Wonderful reviewer to leave on this screen —
-	 * short, specific, in their voice ("placeholder too light", "why box in
-	 * box?"). The most useful field in the rubric: it turns the model's
-	 * uncertainty into the reviewer's agenda instead of hiding it behind a
-	 * rating.
+	 * The model's structured critique of its own screen — the findings, not
+	 * a full matrix. See `CritiqueFinding`, and
+	 * `apps/server/src/agent/designCritique.ts` for the dimension
+	 * vocabulary and where it came from.
+	 *
+	 * The most useful field in the rubric: it turns the model's uncertainty
+	 * into the reviewer's agenda instead of hiding it behind a rating.
 	 */
-	selfFlagged: string[];
+	critique: CritiqueFinding[];
+};
+
+/**
+ * Which of the five internal `critique-*` skills a finding came through.
+ * Carried so findings can be read grouped the way the skills are organised.
+ */
+export type CritiqueLens =
+	| "visual-hierarchy"
+	| "typography"
+	| "composition"
+	| "affordance"
+	| "information-density";
+
+/**
+ * The 20 dimensions the five `critique-*` skills define, plus
+ * `contrast-ladder`, which comes from the review corpus rather than the
+ * skills — see the note in `apps/server/src/agent/designCritique.ts` on why
+ * WCAG compliance and Wonderful's contrast ladder are not the same check.
+ */
+export type CritiqueDimension =
+	| "entry-point"
+	| "eye-flow"
+	| "weight"
+	| "emphasis"
+	| "scale-usage"
+	| "readability"
+	| "type-consistency"
+	| "token-compliance"
+	| "contrast-ladder"
+	| "balance"
+	| "whitespace"
+	| "rhythm"
+	| "gestalt"
+	| "clickability"
+	| "state-visibility"
+	| "cta-clarity"
+	| "discoverability"
+	| "cognitive-load"
+	| "content-priority"
+	| "scanning-pattern"
+	| "progressive-disclosure";
+
+/**
+ * One self-critique finding, in the Observation → Problem → Fix shape every
+ * one of the five critique skills specifies.
+ *
+ * Findings only: the skills rate all four of their dimensions every time,
+ * but a dimension omitted here means "checked, nothing found". A model made
+ * to emit twenty rows pads nineteen of them, and twenty rows reading "pass"
+ * tell a reviewer nothing the rated axes above don't already say.
+ */
+export type CritiqueFinding = {
+	dimension: CritiqueDimension;
+	/** What is there, stated neutrally — no judgement yet. */
+	observation: string;
+	/** What is broken about it, and why that matters to someone using it. */
+	problem: string;
+	/** The specific change to make, not "improve the spacing". */
+	fix: string;
+	/** `major` would stop a reviewer approving; `minor` is a nit they'd
+	 * mention but not block on. The skills' third rating, `pass`, is
+	 * expressed by the dimension being absent. */
+	severity: "minor" | "major";
 };
 
 /** One mechanically-checked hard-gate failure — see

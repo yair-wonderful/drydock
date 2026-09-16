@@ -1,5 +1,6 @@
 import type { DesignReview } from "@drydock/prototype";
 import OpenAI from "openai";
+import { ALL_CRITIQUE_DIMENSIONS } from "./designCritique.ts";
 
 /**
  * The model, not hard-coded: an internal tool's code-gen quality/cost trade-off
@@ -75,7 +76,21 @@ export const PROTOTYPE_TREE_SCHEMA = {
 						componentProvenance: { type: "string", enum: GUARDRAIL_FIT_RATING_ENUM },
 						agentLineage: { type: "string" },
 						stateCoverage: { type: "string" },
-						selfFlagged: { type: "array", items: { type: "string" } },
+						critique: {
+							type: "array",
+							items: {
+								type: "object",
+								properties: {
+									dimension: { type: "string", enum: ALL_CRITIQUE_DIMENSIONS },
+									observation: { type: "string" },
+									problem: { type: "string" },
+									fix: { type: "string" },
+									severity: { type: "string", enum: ["minor", "major"] },
+								},
+								required: ["dimension", "observation", "problem", "fix", "severity"],
+								additionalProperties: false,
+							},
+						},
 					},
 					required: [
 						"contrastLadder",
@@ -85,7 +100,7 @@ export const PROTOTYPE_TREE_SCHEMA = {
 						"componentProvenance",
 						"agentLineage",
 						"stateCoverage",
-						"selfFlagged",
+						"critique",
 					],
 					additionalProperties: false,
 				},

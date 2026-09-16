@@ -86,11 +86,8 @@ Plus:
 - \`rubric.stateCoverage\`: which of loading / empty / error / success /
   disabled / needs-attention you covered where relevant, and which you
   didn't — one sentence, not a checklist dump.
-- \`rubric.selfFlagged\`: the comments you expect a Wonderful reviewer to
-  leave on this screen — short, specific, in their voice ("placeholder too
-  light", "why box in box?", "Primary?"). Empty array only if you genuinely
-  can't find one. Predicting the review honestly is worth more than a
-  screen that claims to need none.`;
+- \`rubric.critique\`: your own structured critique of the screen — see the
+  critique section below for the dimensions and the shape of a finding.`;
 
 const ALLOWED_BARE_IMPORTS = new Set(["react", "react-dom", "react/jsx-runtime", "@wonderful/ui-base"]);
 

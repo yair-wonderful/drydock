@@ -1,5 +1,5 @@
 import { useCallback, useState, type ChangeEvent } from "react";
-import type { DesignReview, DesignReviewRubric } from "@drydock/prototype";
+import type { CritiqueFinding, DesignReview, DesignReviewRubric } from "@drydock/prototype";
 import { generatePrototype, rewritePrototype } from "../api/agentClient";
 import { ApiError } from "../api/httpClient";
 import type { PrototypeTree } from "../drydock";
@@ -115,6 +115,16 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 	);
 }
 
+/** One self-critique finding: what's there, what's wrong, what to change. */
+function CritiqueRow({ finding }: { finding: CritiqueFinding }) {
+	return (
+		<li className={`critique-row critique-${finding.severity}`}>
+			<span className="critique-dimension">{finding.dimension}</span> {finding.problem}
+			<div className="muted">{finding.fix}</div>
+		</li>
+	);
+}
+
 /**
  * The five rated axes, in the order a reviewer scans them — which is
  * roughly how often each one is the actual problem, per the review corpus
@@ -159,12 +169,12 @@ function DesignReviewPanel({ review }: { review: DesignReview }) {
 			</div>
 			<p className="muted">{review.rubric.agentLineage}</p>
 			<p className="muted">{review.rubric.stateCoverage}</p>
-			{review.rubric.selfFlagged.length > 0 && (
-				<div className="design-review-flagged" data-testid="design-review-flagged">
-					<h4>what a reviewer would probably flag</h4>
+			{review.rubric.critique.length > 0 && (
+				<div className="design-review-flagged" data-testid="design-review-critique">
+					<h4>self-critique</h4>
 					<ul>
-						{review.rubric.selfFlagged.map((note) => (
-							<li key={note}>{note}</li>
+						{review.rubric.critique.map((finding) => (
+							<CritiqueRow key={`${finding.dimension}-${finding.problem}`} finding={finding} />
 						))}
 					</ul>
 				</div>

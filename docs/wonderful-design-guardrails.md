@@ -267,13 +267,120 @@ Plus:
   useful field in the rubric: it turns the model's uncertainty into the
   reviewer's agenda instead of hiding it behind a rating.
 
+## The critique instrument
+
+The corpus records what good review looks like; it doesn't perform one.
+Five internal `critique-*` skills (visual-hierarchy, typography,
+composition, affordance, information-density) supply the missing
+instrument, and they arrive already sharing one contract: four dimensions
+each, every finding stated **Observation → Problem → Fix**, rated
+pass / minor / major. Twenty dimensions, one shape — which is what makes
+them encodable as a type rather than prose
+(`apps/server/src/agent/designCritique.ts`).
+
+Every generation now carries `rubric.critique`: an array of findings, each
+naming a dimension, what's there, what's wrong with it, the specific fix,
+and a severity.
+
+**Findings only, never a matrix.** The skills rate all four dimensions
+every time. This artifact asks only for the dimensions where something is
+actually wrong, because a model made to emit twenty rows pads nineteen of
+them, and twenty rows reading "pass" tell a reviewer nothing the rated axes
+don't already say. An omitted dimension means "checked, nothing found".
+
+**One dimension is not from the skills.** `critique-typography` covers
+contrast as WCAG compliance (4.5:1 body, 3:1 large). The corpus's contrast
+complaints are *not* WCAG failures — "Placeholder too light", "Too dark",
+"Icons look darker than text" are about the 3-step ladder and about
+siblings inside one control disagreeing. A placeholder can pass AA and
+still be wrong here. So `contrast-ladder` is sourced from the corpus, and a
+test fails if it ever disappears — otherwise the biggest corpus cluster
+would have no critique dimension.
+
+**One cluster has no dimension, deliberately.** `component-provenance`
+("Is this a thing?", "Do we have a component for that?") is the cluster
+Drydock answers mechanically at compile time, so it stays a rubric axis
+rather than a critique prompt.
+
+## Where the general skill library did and didn't land
+
+Twenty-one general design skills were supplied. Most of their content is
+correct and does not belong in a generation prompt — process advice (card
+sorts, tree testing, usability studies), research method, and anything
+about marketing pages can't be acted on mid-generation. What survived is in
+`apps/server/src/agent/uxFoundations.ts`, filtered by three tests: concrete
+enough to act on while writing a component, not already covered, and
+relevant to an internal Wonderful platform screen.
+
+Three of those rules earn their place by being independently corroborated
+by the corpus — the library and Danny arrived at the same finding from
+different directions:
+
+| Skill rule | Corpus pin |
+|---|---|
+| Every nav item needs a selected state legible by more than colour | "Which one is selected" |
+| Limit container nesting to two levels | "why box in box?", "The full width button inside the gray box is weird" |
+| Put actions on the thing they act on | "The full width button inside the gray box is weird" |
+
+**`animation-principles` was rejected on conflict.** It prescribes a 30–50ms
+entrance stagger and recommends `will-change` for performance. Wonderful's
+own agentic-UX document says stagger ~100ms, only for infrequent macro
+changes, and warns `will-change` is for elements that genuinely benefit. A
+generic skill does not override the organisation's considered position.
+
+**`interface-design` conflicts with Drydock architecturally, not
+cosmetically.** It is the best-written skill in the set, and its diagnosis
+of the core risk is sharper than anything else supplied:
+
+> If another AI, given a similar prompt, would produce substantially the
+> same output, you have failed.
+
+But its method for avoiding that is to explore the product's domain, invent
+a *signature* element, derive a colour world, and choose a typeface —
+and **Drydock can do none of those things.** Prototypes compile against a
+fixed design system with fixed tokens, a fixed type scale and a fixed
+palette. That is the entire point: output should look like Wonderful, not
+like a bespoke direction. Following `interface-design`'s core loop would
+produce prototypes that fail the guardrails by design.
+
+Its craft sections were kept (hierarchy runs on three levers not size
+alone; tabular figures on changing numbers; concentric radii; never
+`transition: all` — a third independent source for that gate). Its
+`Use What Exists` section is worth noting separately: native → primitive →
+hand-roll, and system → component → token → utility is an exact
+independent restatement of gates Drydock already enforces.
+
+The resolution worth naming: Drydock's differentiation can't come from
+inventing a visual direction per screen. It has to come from the screen
+being *right about Wonderful* — the agent lineage, the real components, the
+reviewer's eye. That is a different axis than `interface-design` assumes,
+and the corpus is the evidence for it.
+
+**Two meta-skills have no place in the generator, but one answers an open
+question.** `design-principles` (how to author principles) and
+`design-qa-checklist` (how to author QA checklists) describe processes for
+humans. `design-principles` is, however, exactly the right tool for the gap
+flagged below: the agentic-UX document cites principles P1–P10 that have
+never been supplied to this repo.
+
+**Prompt cost.** The system prompt is now ~5,800 tokens, up from ~1,000 for
+the rules and example alone. That is the thing the corpus warned about —
+more general rules diluting the Wonderful-specific signal. It is not yet
+measured, and `apps/server/scripts/goldenPrompt.ts` is the instrument for
+measuring it once a real key exists.
+
 ## What's not in v0
 
-- **The corpus is not yet a scored benchmark.** It records what good
-  review looks like and feeds the prompt, but nothing yet runs a generated
-  screen against it and produces a number. That is the obvious next step,
-  and it is what would finally answer "is Drydock's output better than what
-  we ship today" — a question this project has never been able to answer.
+- **The corpus is still not a scored benchmark.** The critique instrument
+  now gives a generated screen a structured self-review, but that is the
+  model marking its own homework. Nothing yet runs the critique as an
+  independent pass against the corpus and produces a number, which is what
+  would finally answer "is Drydock's output better than what we ship
+  today". The instrument is built; the scoring harness is not.
+- **P1–P10 are still missing.** The agentic-UX document is the *applied*
+  layer of a set of principles cited as P1, P2, P3, P5 and P10. The
+  document defining them has never been supplied, so what's encoded here
+  rests on foundations this repo cannot see.
 - Whether the model's self-rating is *accurate* is not itself checked.
   These are self-reports, not verified facts — see the note on
   `DesignReview` in `packages/prototype/src/types.ts`.

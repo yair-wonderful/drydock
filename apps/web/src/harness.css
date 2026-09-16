@@ -152,7 +152,17 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 11px;
 .design-review-rubric { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
 .design-review-flagged { margin-top: 8px; }
 .design-review-flagged h4 { margin: 0 0 4px; font-size: inherit; font-weight: 500; opacity: 0.6; }
-.design-review-flagged ul { margin: 0; padding-left: 16px; }
+.design-review-flagged ul { margin: 0; padding-inline-start: 16px; }
+.critique-row { margin-bottom: 6px; }
+.critique-dimension {
+	font-size: 11px;
+	padding: 1px 6px;
+	border-radius: 999px;
+	border: 1px solid var(--border);
+	margin-inline-end: 6px;
+}
+.critique-major .critique-dimension { border-color: var(--danger); color: var(--danger); }
+.critique-minor .critique-dimension { border-color: var(--warning); color: var(--warning); }
 .rubric-pill {
 	font-size: 11px;
 	padding: 2px 7px;
