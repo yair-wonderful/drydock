@@ -12,6 +12,7 @@
 		"check:design-system": "node scripts/checkDesignSystemStaleness.ts",
 		"predev": "node scripts/checkDesignSystemStaleness.ts || true",
 		"dev": "pnpm --filter @drydock/web dev",
+		"llm:adapter": "node scripts/wonderful-llm-adapter.mjs",
 		"build": "pnpm --filter @drydock/web build",
 		"typecheck": "pnpm -r typecheck",
 		"verify": "pnpm --filter @drydock/web verify"

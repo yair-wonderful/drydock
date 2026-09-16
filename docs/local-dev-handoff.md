@@ -8,9 +8,12 @@ dev setup.
 
 - `POST /api/agent/generate` and `POST /api/agent/rewrite`
   (`apps/server/src/agent/routes.ts`, `generatePrototype.ts`,
-  `rewritePrototype.ts`) — an OpenAI-backed loop that produces or edits a
+  `rewritePrototype.ts`) — an OpenAI-compatible loop that produces or edits a
   prototype's file tree (`apps/server/src/agent/openaiClient.ts`,
-  `generateTree.ts`, `systemPrompt.ts`).
+  `generateTree.ts`, `systemPrompt.ts`). In local Wonderful-backed development,
+  `scripts/wonderful-llm-adapter.mjs` provides that OpenAI-compatible endpoint
+  by forwarding structured completions to the Wonderful function
+  `/api/v1/functions/drydock-llm-completion`.
 - The "Generate" and "Rewrite" boxes in the web app at
   `http://127.0.0.1:5199` call these endpoints.
 
@@ -27,7 +30,20 @@ dev setup.
 2. **Design system vendored**: `vendor/` (gitignored) synced via
    `pnpm run sync:design-system`, then `pnpm install` at the repo root.
 
-3. **`apps/server/.env`**:
+3. **`apps/server/.env`**, using the Wonderful-backed adapter (no external key):
+   ```
+   DATABASE_URL=postgres://drydock:<password>@localhost:5432/drydock
+   PORT=5299
+   DRYDOCK_WEB_ORIGIN=http://127.0.0.1:5199,http://127.0.0.1:5181
+   OPENAI_API_KEY=drydock-local-function-adapter
+   OPENAI_BASE_URL=http://127.0.0.1:5399/v1
+   ```
+
+   `OPENAI_API_KEY` is still required because the server uses the OpenAI SDK,
+   but when `OPENAI_BASE_URL` points at the local adapter this value is only a
+   local placeholder.
+
+   If you deliberately want to test against OpenAI directly instead, use:
    ```
    DATABASE_URL=postgres://drydock:<password>@localhost:5432/drydock
    PORT=5299
@@ -43,10 +59,16 @@ dev setup.
 
 ```bash
 # terminal 1
-pnpm --filter @drydock/server run dev   # http://127.0.0.1:5299
+pnpm run llm:adapter                    # http://127.0.0.1:5399/v1
 
 # terminal 2
+pnpm --filter @drydock/server run dev   # http://127.0.0.1:5299
+
+# terminal 3
 pnpm --filter @drydock/web run dev      # http://127.0.0.1:5199
+
+# terminal 4
+pnpm --filter @drydock/web run verify:agent-loop
 ```
 
 Then in the browser at `http://127.0.0.1:5199`:
@@ -58,7 +80,7 @@ Then in the browser at `http://127.0.0.1:5199`:
 
 ## As of this handoff
 
-Everything above was in place except a real `OPENAI_API_KEY` — the `.env`
-still had a placeholder value, so the loop hadn't been exercised end-to-end
-in the browser yet. That's the one blocking step before Generate/Rewrite can
-be tested.
+The Wonderful-backed adapter is the preferred local path when the developer does
+not have an external model key. It expects the Wonderful CLI (`wful`) to be
+installed and authenticated locally; if the adapter returns an auth/connectivity
+error, run `wful doctor` before retrying the smoke test.
