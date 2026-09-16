@@ -199,7 +199,13 @@ async function patchComments(root: string): Promise<string[]> {
 	for (const edit of COMMENT_EDITS) {
 		const file = path.join(root, edit.file);
 		const source = await readFile(file, "utf8");
-		if (source.includes(MARKER) || source.includes(edit.replace.split("\n")[1] ?? "\u0000")) {
+		// The whole replacement block, not a fragment of it: for storage.js the
+		// replacement's second line repeats an UNCHANGED context line
+		// (`y: fields.y,`) from `edit.find`, so checking any single line risked
+		// matching a checkout that was never patched at all and silently
+		// skipping it. The full block is the only substring guaranteed to exist
+		// only after this exact edit has actually landed.
+		if (source.includes(edit.replace)) {
 			results.push(`${edit.file} already patched`);
 			continue;
 		}
