@@ -3,7 +3,18 @@ import {
 	type PrototypeValidationError,
 	validateFileTree,
 } from "@drydock/prototype";
+import type postgres from "postgres";
 import type { Sql } from "postgres";
+
+/**
+ * The subset of `Sql` these helpers actually need — tagged-template queries,
+ * `.json()` for the files column — and the type both `Sql` (a plain
+ * connection) and `TransactionSql` (the argument `sql.begin()` hands its
+ * callback) satisfy. `Sql` and `TransactionSql` do NOT extend one another —
+ * they both extend a shared `ISql` — so a helper called with either has to be
+ * typed against that common base, not against `Sql` itself.
+ */
+type Queryable = postgres.ISql;
 
 export type Prototype = {
 	id: string;
@@ -152,7 +163,7 @@ export type ForkInput = {
  * index is the backstop if the discipline ever slips.
  */
 const appendVersion = async (
-	tx: Sql,
+	tx: Queryable,
 	prototypeId: string,
 	files: readonly PrototypeFile[],
 	entryPoint: string,
@@ -190,7 +201,7 @@ const appendVersion = async (
 
 /** Locks the prototype row for the rest of the transaction, or throws if it is
  * gone. Every version write goes through here. */
-const lockPrototype = async (tx: Sql, id: string): Promise<PrototypeRow> => {
+const lockPrototype = async (tx: Queryable, id: string): Promise<PrototypeRow> => {
 	const [row] = await tx<PrototypeRow[]>`
 		SELECT * FROM prototypes WHERE id = ${id} FOR UPDATE
 	`;
