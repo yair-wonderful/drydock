@@ -5,8 +5,8 @@
 	"type": "module",
 	"description": "Prototype persistence: append-only versions, forking that copies rather than references, and the HTTP surface over them.",
 	"scripts": {
-		"dev": "node --watch src/main.ts",
-		"migrate": "node src/db/migrate.ts",
+		"dev": "node --env-file-if-exists=.env --watch src/main.ts",
+		"migrate": "node --env-file-if-exists=.env src/db/migrate.ts",
 		"test": "node --test src/**/*.test.ts",
 		"typecheck": "tsc --noEmit"
 	},

@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
 import { getSql } from "./db/connect.ts";
 import { migrate } from "./db/migrate.ts";
+import { applyCorsHeaders } from "./http/cors.ts";
+import { withRoute } from "./http/respond.ts";
 import { Router } from "./http/router.ts";
 import { registerPrototypeRoutes } from "./prototypes/routes.ts";
 
@@ -20,9 +22,24 @@ const main = async (): Promise<void> => {
 
 	const router = new Router();
 	registerPrototypeRoutes(router, sql);
-	router.get("/healthz", async () => ({ ok: true }));
+	// Every route runs through `withRoute`, `/healthz` included — a bare route
+	// handler's return value is not itself a response; `Router.handle` ignores
+	// it, so without this wrapper the request never gets a reply and hangs.
+	router.get(
+		"/healthz",
+		withRoute(async () => ({ ok: true })),
+	);
 
 	const server = createServer((req, res) => {
+		applyCorsHeaders(req, res);
+		// The browser sends this ahead of any cross-origin POST/PUT/DELETE to ask
+		// permission; it carries no route of its own; the headers above are the
+		// entire answer.
+		if (req.method === "OPTIONS") {
+			res.writeHead(204);
+			res.end();
+			return;
+		}
 		void router.handle(req, res);
 	});
 
