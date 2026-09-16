@@ -1,0 +1,9 @@
+/* The stylesheet adopted into every prototype's shadow root.
+
+   Mirrors `wonderful-ui/src/features/apps/components/AppShell/legacyAppStyles.css`,
+   which exists for exactly the same reason: the design system's component CSS
+   has to be scoped to the app's shadow root, not injected into the host
+   document, where its resets and `:root` token block would blank the platform
+   UI around it. Imported with `?inline` so Vite hands it over as a processed
+   STRING for a constructed stylesheet — never as a document-level side effect. */
+@import "@wonderful/ui/styles.css";

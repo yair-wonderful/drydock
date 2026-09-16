@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example
+
+# The design system is FETCHED, not authored here. `pnpm run sync:design-system`
+# reproduces it from the commit pinned in vendor/SOURCE.json, which IS committed —
+# so a checkout is reproducible without copying 3.4MB of another repository's
+# source into this one's history, and a design-system bump is a one-line diff
+# rather than a few thousand.
+vendor/ui/
+vendor/theme/

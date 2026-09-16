@@ -1,0 +1,90 @@
+/* The host document. It owns the design TOKEN VALUES on `<html>`, exactly as
+   `wonderful-ui` does — custom properties then inherit across every shadow
+   boundary, which is why a prototype re-themes with no rebuild. The component
+   CSS is additionally adopted INTO each shadow root by `mountPrototype`. */
+@import "@wonderful/ui/styles.css";
+
+/* The harness chrome is deliberately plain CSS: it must not be mistaken for,
+   or lend styling to, the prototype under test. */
+.app {
+	display: grid;
+	grid-template-columns: minmax(360px, 1fr) minmax(0, 1.6fr);
+	grid-template-areas: "header header" "editor stage" "report anchors";
+	gap: 12px;
+	padding: 16px;
+	min-height: 100vh;
+	box-sizing: border-box;
+	background: var(--background);
+	color: var(--foreground);
+	font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.app-header { grid-area: header; }
+.app-header h1 { margin: 0; font-size: 15px; letter-spacing: -0.01em; }
+.app-header p { margin: 4px 0 8px; }
+
+.controls { display: flex; gap: 6px; flex-wrap: wrap; }
+.controls button,
+.tabs .tab {
+	font: inherit;
+	padding: 3px 9px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--background);
+	color: var(--foreground);
+	cursor: pointer;
+}
+.controls button.active,
+.tabs .tab.active { background: var(--primary); color: var(--primary-foreground); }
+
+.pane {
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: 10px;
+	overflow: auto;
+	background: var(--background);
+}
+.editor { grid-area: editor; display: flex; flex-direction: column; gap: 8px; }
+.stage { grid-area: stage; }
+.report { grid-area: report; }
+.anchors { grid-area: anchors; }
+
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.editor textarea {
+	flex: 1;
+	min-height: 440px;
+	resize: vertical;
+	font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 8px;
+	background: var(--background-secondary);
+	color: var(--foreground);
+}
+
+.stage-frame {
+	margin: 0 auto;
+	max-width: 100%;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+	transition: opacity 120ms ease-in-out;
+}
+.stage-mount { min-height: 460px; }
+.stage-frame[data-stale="true"] { border-color: var(--warning); }
+.stage-stale {
+	margin: 0 0 8px;
+	color: var(--warning);
+	text-align: center;
+}
+
+.stats { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 10px; }
+.stat dt { font-size: 11px; opacity: 0.6; margin: 0; }
+.stat dd { margin: 0; font-size: 13px; }
+
+h3 { font-size: 12px; margin: 10px 0 4px; text-transform: lowercase; }
+pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 11px; }
+.muted { opacity: 0.6; }
+.good { color: var(--success); }
+.warn { color: var(--warning); }
+.bad { color: var(--danger); }
