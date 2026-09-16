@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FileEditor from "./components/FileEditor";
 import PrototypeStage, { type ViewportName } from "./components/PrototypeStage";
 import ReportPanel from "./components/ReportPanel";
@@ -12,6 +12,8 @@ import {
 	type StyleCoverage,
 } from "./drydock";
 import initialTree from "./fixtures/prototypeTree";
+import { HARNESS_ENTRY_POINT } from "./prototype/convertTree";
+import { type SaveStatus, usePersistedPrototype } from "./prototype/usePersistedPrototype";
 
 type Mode = "light" | "dark";
 
@@ -36,9 +38,36 @@ export default function App() {
 	const mountedRef = useRef<{ unmount: () => void } | null>(null);
 	const runRef = useRef(0);
 
+	const persistence = usePersistedPrototype();
+
+	// Hydrates the editor from a fetched prototype exactly once. `loadedTree`
+	// is a load-once value by the hook's own contract (see its doc comment), so
+	// a plain effect keyed on it needs no extra re-entry guard here.
+	useEffect(() => {
+		if (!persistence.loadedTree) return;
+		const { tree: fetchedTree } = persistence.loadedTree;
+		setTree(fetchedTree);
+		setActiveFile(HARNESS_ENTRY_POINT in fetchedTree ? HARNESS_ENTRY_POINT : Object.keys(fetchedTree)[0]);
+	}, [persistence.loadedTree]);
+
 	const handleChangeFile = useCallback((file: string, contents: string) => {
 		setTree((current) => ({ ...current, [file]: contents }));
 	}, []);
+
+	// Depending on the specific functions rather than `persistence` itself: the
+	// hook returns a fresh object every render, so a dependency on the whole
+	// object would recreate these callbacks every render regardless of whether
+	// `setName`/`save` actually changed.
+	const { setName: setPersistedName, save: savePrototype } = persistence;
+
+	const handleChangeName = useCallback(
+		(event: ChangeEvent<HTMLInputElement>) => setPersistedName(event.target.value),
+		[setPersistedName],
+	);
+
+	const handleSave = useCallback(() => {
+		void savePrototype(tree);
+	}, [savePrototype, tree]);
 
 	const handleRuntimeError = useCallback((error: Error) => {
 		setRuntimeError(error);
@@ -105,15 +134,41 @@ export default function App() {
 		return Object.entries(result.sourceMap).slice(0, 4);
 	}, [result]);
 
+	if (persistence.isLoading) {
+		return (
+			<main className="app app-loading">
+				<p>Loading prototype…</p>
+			</main>
+		);
+	}
+
 	return (
 		<main className="app">
 			<header className="app-header">
-				<h1>Drydock spike</h1>
+				<h1>Drydock</h1>
 				<p className="muted">
 					Multi-file TSX compiled in this tab, mounted on the Wonderful app runtime.
 					No VM, no server build.
 				</p>
+				{persistence.loadError && (
+					<p className="error-banner" role="alert">
+						Could not load this prototype ({persistence.loadError}) — showing the default
+						fixture instead.
+					</p>
+				)}
 				<div className="controls">
+					<input
+						type="text"
+						className="prototype-name"
+						value={persistence.name}
+						onChange={handleChangeName}
+						placeholder="Untitled prototype"
+						aria-label="Prototype name"
+					/>
+					<button type="button" onClick={handleSave} disabled={persistence.saveStatus.state === "saving"}>
+						{persistence.saveStatus.state === "saving" ? "Saving…" : "Save"}
+					</button>
+					<SaveStatusLabel status={persistence.saveStatus} />
 					<button type="button" onClick={handleToggleMode} data-testid="toggle-mode">
 						{mode === "light" ? "☾ dark" : "☀ light"}
 					</button>
@@ -181,4 +236,21 @@ function ViewportButton({ name, isActive, onSelect }: ViewportButtonProps) {
 			{name}
 		</button>
 	);
+}
+
+/** Renders nothing for the idle state, so a prototype that has never been
+ * saved does not show a stale-looking blank status. */
+function SaveStatusLabel({ status }: { status: SaveStatus }) {
+	switch (status.state) {
+		case "saved":
+			return <span className="save-status save-status-ok">saved · v{status.versionNumber}</span>;
+		case "error":
+			return (
+				<span className="save-status save-status-error" role="alert">
+					{status.message}
+				</span>
+			);
+		default:
+			return null;
+	}
 }

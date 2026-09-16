@@ -26,6 +26,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@drydock/prototype':
+        specifier: workspace:*
+        version: link:../../packages/prototype
+      '@tanstack/react-query':
+        specifier: ^5.90.20
+        version: 5.103.0(react@19.3.0)
       '@wonderful/theme':
         specifier: workspace:*
         version: link:../../vendor/theme
@@ -45,9 +51,6 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.3.1
         version: 4.3.3(vite@8.3.0(@types/node@22.20.3)(jiti@2.7.0))
-      '@tanstack/react-query':
-        specifier: ^5.90.20
-        version: 5.103.0(react@19.3.0)
       '@types/babel__standalone':
         specifier: ^7.1.9
         version: 7.1.9

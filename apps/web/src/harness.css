@@ -88,3 +88,23 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 11px;
 .good { color: var(--success); }
 .warn { color: var(--warning); }
 .bad { color: var(--danger); }
+
+.app-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+}
+.error-banner { color: var(--warning); margin: 0 0 6px; }
+.prototype-name {
+	font: inherit;
+	background: var(--background);
+	color: var(--foreground);
+	border: 1px solid var(--border);
+	border-radius: 3px;
+	padding: 3px 7px;
+	min-width: 160px;
+}
+.save-status { font-size: 12px; align-self: center; }
+.save-status-ok { color: var(--success); }
+.save-status-error { color: var(--danger); }
