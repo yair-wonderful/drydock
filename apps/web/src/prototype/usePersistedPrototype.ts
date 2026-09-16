@@ -83,8 +83,14 @@ export const usePersistedPrototype = (): UsePersistedPrototypeResult => {
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [saveStatus, setSaveStatus] = useState<SaveStatus>({ state: "idle" });
 
-	// Guards against loading twice under React 18/19 Strict Mode's deliberate
-	// double-invoke of effects in development.
+	// Guards against fetching twice under React 18/19 Strict Mode's deliberate
+	// double-invoke of effects in development. This is the ONLY guard: a
+	// `cancelled`-flag cleanup (the usual pattern for abandoning a stale fetch)
+	// would be set by Strict Mode's simulated unmount of the FIRST invocation,
+	// permanently discarding the result of the fetch this ref just chose to let
+	// run — the effect would start loading and then never leave that state, in
+	// dev only. React 18+ already ignores a state update from a genuinely
+	// unmounted component, so no cleanup is needed for that case either.
 	const hasLoadedRef = useRef(false);
 
 	useEffect(() => {
@@ -93,10 +99,8 @@ export const usePersistedPrototype = (): UsePersistedPrototypeResult => {
 		}
 		hasLoadedRef.current = true;
 
-		let cancelled = false;
 		getPrototype(prototypeId)
 			.then((prototype: PrototypeWithActiveVersion) => {
-				if (cancelled) return;
 				if (!prototype.activeVersion) {
 					setLoadError("this prototype has no published version");
 					return;
@@ -108,16 +112,11 @@ export const usePersistedPrototype = (): UsePersistedPrototypeResult => {
 				});
 			})
 			.catch((error: unknown) => {
-				if (cancelled) return;
 				setLoadError(error instanceof ApiError ? error.message : "failed to load prototype");
 			})
 			.finally(() => {
-				if (!cancelled) setIsLoading(false);
+				setIsLoading(false);
 			});
-
-		return () => {
-			cancelled = true;
-		};
 	}, [prototypeId]);
 
 	const save = useCallback(
