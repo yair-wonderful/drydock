@@ -1,5 +1,5 @@
-import type { PrototypeFile, ValidatedTree } from "@drydock/prototype";
-import { getValidatedTree } from "./generateTree.ts";
+import type { PrototypeFile } from "@drydock/prototype";
+import { getValidatedTree, type GenerationResult } from "./generateTree.ts";
 import { getRewriteUserPrompt, SYSTEM_PROMPT } from "./systemPrompt.ts";
 
 /**
@@ -12,5 +12,5 @@ export const rewritePrototype = (
 	currentFiles: readonly PrototypeFile[],
 	entryPoint: string,
 	instruction: string,
-): Promise<ValidatedTree> =>
+): Promise<GenerationResult> =>
 	getValidatedTree(SYSTEM_PROMPT, getRewriteUserPrompt(currentFiles, instruction), entryPoint);

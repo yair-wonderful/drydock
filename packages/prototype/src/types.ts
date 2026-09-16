@@ -53,3 +53,46 @@ export type ValidatedTree = {
  * make the browser's job harder for no gain on the server's.
  */
 export type Result<T> = { ok: true; value: T } | { ok: false; error: PrototypeValidationError };
+
+/** A subjective self-rating, on the Wonderful Design Guardrails rubric. Never
+ * blocks anything — see `docs/wonderful-design-guardrails.md`. */
+export type GuardrailFitRating = "strong" | "medium" | "weak";
+
+/**
+ * The agent's own account of what it built, attached to every generation —
+ * "Guardrails v0"'s rubric layer. Shown alongside a prototype, never
+ * mechanically enforced: a rating here is a self-report from the model that
+ * wrote the tree, not a verified fact. It exists so a reviewer (human or a
+ * later automated pass) has something concrete to check the work against,
+ * and so repeated patterns in `knownGaps` / weak ratings have somewhere to
+ * accumulate before any of them earns promotion to a hard gate.
+ */
+export type DesignReview = {
+	/** What this screen is for, in one sentence. */
+	purpose: string;
+	/** The one primary action a viewer is meant to take. */
+	primaryAction: string;
+	/** The @wonderful/ui-base components actually used. */
+	componentsUsed: string[];
+	/** What's mocked and how, in one sentence. */
+	mockData: string;
+	/** Things intentionally NOT wired for real — e.g. "permissions not enforced". */
+	knownGaps: string[];
+	rubric: {
+		/** Does this read as a Wonderful product screen, not a generic SaaS mock? */
+		wonderfulFit: GuardrailFitRating;
+		/** Could an engineer tell what to copy, replace, and keep mocked? */
+		handoffReadiness: GuardrailFitRating;
+		/** Which of loading/empty/error/success/disabled/needs-attention are
+		 * covered where relevant, and which are missing. */
+		stateCoverage: string;
+	};
+};
+
+/** One mechanically-checked hard-gate failure — see
+ * `apps/server/src/agent/designGuardrails.ts`. */
+export type GuardrailViolation = {
+	rule: string;
+	message: string;
+	file?: string;
+};

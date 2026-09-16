@@ -1,4 +1,5 @@
 import { useCallback, useState, type ChangeEvent } from "react";
+import type { DesignReview } from "@drydock/prototype";
 import { generatePrototype, rewritePrototype } from "../api/agentClient";
 import { ApiError } from "../api/httpClient";
 import type { PrototypeTree } from "../drydock";
@@ -25,6 +26,7 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 	const [prompt, setPrompt] = useState("");
 	const [instruction, setInstruction] = useState("");
 	const [status, setStatus] = useState<AgentStatus>({ state: "idle" });
+	const [review, setReview] = useState<DesignReview | null>(null);
 
 	const handleChangePrompt = useCallback(
 		(event: ChangeEvent<HTMLTextAreaElement>) => setPrompt(event.target.value),
@@ -42,6 +44,7 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 		try {
 			const result = await generatePrototype(trimmed, HARNESS_ENTRY_POINT);
 			onApplyTree(getTreeFromFiles(result.files));
+			setReview(result.review);
 			setStatus({ state: "idle" });
 		} catch (error) {
 			setStatus({ state: "error", message: error instanceof ApiError ? error.message : "generation failed" });
@@ -56,6 +59,7 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 			const files = getFilesFromTree(tree);
 			const result = await rewritePrototype(files, HARNESS_ENTRY_POINT, trimmed);
 			onApplyTree(getTreeFromFiles(result.files));
+			setReview(result.review);
 			setStatus({ state: "idle" });
 			setInstruction("");
 		} catch (error) {
@@ -106,6 +110,42 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 					{status.message}
 				</p>
 			)}
+			{review && <DesignReviewPanel review={review} />}
+		</div>
+	);
+}
+
+/**
+ * Wonderful Design Guardrails v0's rubric layer, shown alongside every
+ * generation — advisory, never blocking. See
+ * docs/wonderful-design-guardrails.md for what each field means and why
+ * this stays a self-report rather than a mechanical check.
+ */
+function DesignReviewPanel({ review }: { review: DesignReview }) {
+	return (
+		<div className="design-review" data-testid="design-review">
+			<h3>design self-review</h3>
+			<dl>
+				<dt>purpose</dt>
+				<dd>{review.purpose}</dd>
+				<dt>primary action</dt>
+				<dd>{review.primaryAction}</dd>
+				<dt>components used</dt>
+				<dd>{review.componentsUsed.join(", ") || "none"}</dd>
+				<dt>mock data</dt>
+				<dd>{review.mockData}</dd>
+				<dt>known gaps</dt>
+				<dd>{review.knownGaps.length > 0 ? review.knownGaps.join("; ") : "none"}</dd>
+			</dl>
+			<div className="design-review-rubric">
+				<span className={`rubric-pill rubric-${review.rubric.wonderfulFit}`}>
+					wonderful fit: {review.rubric.wonderfulFit}
+				</span>
+				<span className={`rubric-pill rubric-${review.rubric.handoffReadiness}`}>
+					handoff: {review.rubric.handoffReadiness}
+				</span>
+			</div>
+			<p className="muted">{review.rubric.stateCoverage}</p>
 		</div>
 	);
 }

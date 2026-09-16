@@ -1,3 +1,4 @@
+import type { DesignReview } from "@drydock/prototype";
 import OpenAI from "openai";
 
 /**
@@ -26,11 +27,15 @@ export const getOpenAiClient = (): OpenAI => {
 
 export const getModel = (): string => process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
 
+const GUARDRAIL_FIT_RATING_ENUM = ["strong", "medium", "weak"] as const;
+
 /**
- * The shape the model must return — a file array, nothing else. Enforced by
- * the API itself (`response_format: json_schema, strict: true`), which is
- * what makes `JSON.parse` on the response trustworthy without a hand-rolled
- * shape check before `validateFileTree` gets to do the check that matters.
+ * The shape the model must return — a file array plus its own design
+ * self-review (Wonderful Design Guardrails v0's rubric layer; see
+ * `designGuardrails.ts`). Enforced by the API itself
+ * (`response_format: json_schema, strict: true`), which is what makes
+ * `JSON.parse` on the response trustworthy without a hand-rolled shape check
+ * before `validateFileTree` gets to do the check that matters.
  *
  * No `entryPoint` field: the caller (not the model) decides what the entry
  * point is named — the prompt tells the model exactly which path to use for
@@ -52,13 +57,36 @@ export const PROTOTYPE_TREE_SCHEMA = {
 				additionalProperties: false,
 			},
 		},
+		review: {
+			type: "object",
+			properties: {
+				purpose: { type: "string" },
+				primaryAction: { type: "string" },
+				componentsUsed: { type: "array", items: { type: "string" } },
+				mockData: { type: "string" },
+				knownGaps: { type: "array", items: { type: "string" } },
+				rubric: {
+					type: "object",
+					properties: {
+						wonderfulFit: { type: "string", enum: GUARDRAIL_FIT_RATING_ENUM },
+						handoffReadiness: { type: "string", enum: GUARDRAIL_FIT_RATING_ENUM },
+						stateCoverage: { type: "string" },
+					},
+					required: ["wonderfulFit", "handoffReadiness", "stateCoverage"],
+					additionalProperties: false,
+				},
+			},
+			required: ["purpose", "primaryAction", "componentsUsed", "mockData", "knownGaps", "rubric"],
+			additionalProperties: false,
+		},
 	},
-	required: ["files"],
+	required: ["files", "review"],
 	additionalProperties: false,
 } as const;
 
 export type RawPrototypeTree = {
 	files: { path: string; contents: string }[];
+	review: DesignReview;
 };
 
 /**

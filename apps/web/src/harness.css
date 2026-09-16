@@ -138,3 +138,24 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 11px;
 }
 .agent-row button:disabled { opacity: 0.5; cursor: wait; }
 .agent-error { color: var(--danger); margin: 0; }
+
+.design-review {
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 8px 10px;
+	background: var(--background-secondary);
+}
+.design-review h3 { margin: 0 0 6px; }
+.design-review dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 2px 8px; }
+.design-review dt { opacity: 0.6; }
+.design-review dd { margin: 0; }
+.design-review-rubric { display: flex; gap: 6px; margin: 8px 0 4px; }
+.rubric-pill {
+	font-size: 11px;
+	padding: 2px 7px;
+	border-radius: 999px;
+	border: 1px solid var(--border);
+}
+.rubric-strong { background: var(--success); color: var(--primary-foreground); border-color: transparent; }
+.rubric-medium { background: var(--warning); color: var(--primary-foreground); border-color: transparent; }
+.rubric-weak { background: var(--danger); color: var(--primary-foreground); border-color: transparent; }

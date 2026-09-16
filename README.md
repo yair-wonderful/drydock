@@ -88,6 +88,8 @@ invisible unless you show it.
 | `apps/web/blackbird-join/` | An idempotent patcher that joins the engine to a Blackbird checkout without modifying its canvas, contract, comments or service worker |
 | `scripts/fetchDesignSystem.ts` | The only link to the monorepo |
 | `scripts/checkDesignSystemStaleness.ts` | Reports whether the vendored pin is behind `libs/ui`/`libs/theme` |
+| `apps/server/src/agent/` | The agent loop: generate a prototype from a prompt, or rewrite the current one per an instruction, through OpenAI structured outputs |
+| `docs/wonderful-design-guardrails.md` | Wonderful Design Guardrails v0 — the hard gates and rubric the agent loop is held to, and why |
 
 ## The one real limitation
 
@@ -103,5 +105,9 @@ The compiler, anchoring and canvas join are working and verified. Persistence
 exists (`apps/server`, verified end-to-end through a real browser against
 Postgres — 8 checks) and is wired into the Blackbird join (`apps/web/blackbird-join`
 — compile, comments, multiplayer sync, and loading a real persisted prototype
-by id are each independently verified, 4-6 checks apiece). Not yet built: the
-agent loop that writes the file tree.
+by id are each independently verified, 4-6 checks apiece). The agent loop
+(generate from a prompt, rewrite per an instruction) exists and is held to
+Wonderful Design Guardrails v0 (see `docs/wonderful-design-guardrails.md`) —
+typechecked and unit-tested, but not yet verified against a live model call
+in this environment; `apps/server/scripts/goldenPrompt.ts` is the intended
+before/after check once a real `OPENAI_API_KEY` is available.

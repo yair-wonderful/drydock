@@ -7,6 +7,7 @@
 	"scripts": {
 		"dev": "node --env-file-if-exists=.env --watch src/main.ts",
 		"migrate": "node --env-file-if-exists=.env src/db/migrate.ts",
+		"golden-prompt": "node --env-file-if-exists=.env scripts/goldenPrompt.ts",
 		"test": "node --test src/**/*.test.ts",
 		"typecheck": "tsc --noEmit"
 	},

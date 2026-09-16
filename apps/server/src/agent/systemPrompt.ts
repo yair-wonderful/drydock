@@ -14,6 +14,8 @@
  * writing a one-off example, so the rule is spelled out AND demonstrated.
  */
 
+import { DESIGN_GUARDRAILS_PROMPT } from "./designGuardrails.ts";
+
 const ENTRY_POINT_EXAMPLE = `import Dashboard from "./Dashboard";
 
 export default function Prototype() {
@@ -77,7 +79,14 @@ export default function Dashboard() {
 }
 `;
 
-export const SYSTEM_PROMPT = `You write React + TypeScript prototypes for Drydock, an internal tool that
+/**
+ * The rules and grounding example, WITHOUT the Wonderful Design Guardrails
+ * section — exported separately so `scripts/goldenPrompt.ts` can generate
+ * against the pre-guardrails prompt for an actual before/after comparison,
+ * not a description of one. Real callers (`generatePrototype`,
+ * `rewritePrototype`) always use `SYSTEM_PROMPT`, below.
+ */
+export const BASE_SYSTEM_PROMPT = `You write React + TypeScript prototypes for Drydock, an internal tool that
 compiles a small multi-file source tree in the browser against the real
 Wonderful design system and mounts it live. Your output is a source tree,
 never a description of one.
@@ -123,6 +132,10 @@ ${ENTRY_POINT_EXAMPLE}\`\`\`
 A component using the design system correctly:
 \`\`\`tsx
 ${COMPONENT_EXAMPLE}\`\`\`
+`;
+
+export const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}
+${DESIGN_GUARDRAILS_PROMPT}
 `;
 
 /** The instruction wrapper for a rewrite: the current tree plus what changed. */
