@@ -8,6 +8,22 @@ importers:
 
   .: {}
 
+  apps/server:
+    dependencies:
+      '@drydock/prototype':
+        specifier: workspace:*
+        version: link:../../packages/prototype
+      postgres:
+        specifier: ^3.4.5
+        version: 3.4.9
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.20.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   apps/web:
     dependencies:
       '@wonderful/theme':
@@ -65,6 +81,15 @@ importers:
       vite:
         specifier: ^8.1.0
         version: 8.3.0(@types/node@22.20.3)(jiti@2.7.0)
+
+  packages/prototype:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.20.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   vendor/theme: {}
 
@@ -1572,6 +1597,10 @@ packages:
   postcss@8.5.28:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
+
+  postgres@3.4.9:
+    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
+    engines: {node: '>=12'}
 
   property-information@7.2.0:
     resolution: {integrity: sha512-IAtzIB6sUiWaJYrX9smp3V46pBGbBeLFRGdh25kg1334VcBlD8HzhPeNIWQH9zhGmo2itIe25EHt9dQP7G5hmg==}
@@ -3385,6 +3414,8 @@ snapshots:
       nanoid: 3.3.19
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  postgres@3.4.9: {}
 
   property-information@7.2.0: {}
 

@@ -1,0 +1,21 @@
+{
+	"name": "@drydock/server",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Prototype persistence: append-only versions, forking that copies rather than references, and the HTTP surface over them.",
+	"scripts": {
+		"dev": "node --watch src/main.ts",
+		"migrate": "node src/db/migrate.ts",
+		"test": "node --test src/**/*.test.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@drydock/prototype": "workspace:*",
+		"postgres": "^3.4.5"
+	},
+	"devDependencies": {
+		"@types/node": "^22.13.10",
+		"typescript": "^5.9.3"
+	}
+}
