@@ -103,5 +103,8 @@ The compiler, anchoring and canvas join are working and verified. Persistence
 exists (`apps/server`, verified end-to-end through a real browser against
 Postgres — 8 checks) and is wired into the Blackbird join (`apps/web/blackbird-join`
 — compile, comments, multiplayer sync, and loading a real persisted prototype
-by id are each independently verified, 4-6 checks apiece). Not yet built: the
-agent loop that writes the file tree.
+by id are each independently verified, 4-6 checks apiece). The agent loop
+(`/api/agent/generate`, `/api/agent/rewrite`) is built — see
+`docs/local-dev-handoff.md` for how to run it locally and
+`docs/harbor-research-and-plan.md` for the research and phased plan behind
+the whole project.

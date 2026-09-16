@@ -1,6 +1,6 @@
 {
 	"repository": "https://github.com/wonderfulcx/wonderful.git",
-	"commit": "20c7ba5e792a9156967279e08c59db58fc9c216c",
+	"commit": "c7ea8b6056dc2303dfcdb4683f823bf1b3fea152",
 	"paths": [
 		"libs/ui",
 		"libs/theme"
@@ -9,5 +9,5 @@
 		"@wonderful/theme",
 		"@wonderful/ui"
 	],
-	"fetchedAt": "2026-09-16T09:42:51.433Z"
+	"fetchedAt": "2026-09-16T13:48:27.504Z"
 }
