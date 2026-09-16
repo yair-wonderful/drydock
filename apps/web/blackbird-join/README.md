@@ -138,9 +138,36 @@ Two things the package had to start doing, both found by wiring it up:
 
 - No agent wrote the tree — the fixture is fixed. The join proves the pipe, not
   the loop.
-- Nothing is persisted server-side: packages live in the service worker's cache,
-  keyed by a uuid minted per compile, and comments live in `localStorage` as
-  they already did.
+- A compiled PACKAGE is still not persisted server-side: it lives in the
+  service worker's cache, keyed by a uuid minted per compile, same as before.
+  The SOURCE it was compiled from can now come from the server (see below) —
+  that is a different claim from the package itself surviving a reload.
+
+## Loading a real, persisted prototype
+
+Everything above compiles one of two fixed demo fixtures. `DrydockPanel` also
+takes a prototype id — typed in, or via `?drydockPrototype=<id>` on the
+canvas's own URL — fetches it from the same `apps/server` the standalone
+harness saves to, and compiles that instead. This is what turns "the join
+proves the pipe, not the loop" into something an actual saved prototype can be
+reviewed through, rather than only ever a fixture invented for the demo.
+
+`node blackbird-join/verify-persistence.ts` drives the real panel — types a
+real prototype id, clicks Load, reads the rendered frame — against a real
+`apps/server` + Postgres. 4/4:
+
+| Claim | Evidence |
+|---|---|
+| Loading a real prototype id publishes a frame | panel reports `published /preview/drydock-*/index.html` |
+| The live frame renders the PERSISTED prototype's own content | frame text contains a marker written only into that prototype's stored source, never into any fixture |
+| The original fixture buttons still compile | this is additive — loading a persisted prototype doesn't disturb the demo path the other suites drive |
+| A missing prototype id reports an error rather than nothing | `prototype <uuid> not found` in the detail panel, not a silently blank frame |
+
+Two servers, two origins, one browser: the canvas (Blackbird, `:5181` by
+convention) and the persistence API (`apps/server`, `:5299`) are different
+origins even in local dev, same as the standalone harness. `apps/server`'s
+CORS allowlist (`DRYDOCK_WEB_ORIGIN`) covers both by default.
+
 ## Multiplayer
 
 `node blackbird-join/verify-sync.ts` starts the canvas's own sync server, joins

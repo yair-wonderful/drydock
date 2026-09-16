@@ -99,7 +99,9 @@ alternative — `gap` on a `Layout.*`, a `Card`'s own inset, a design token.
 
 ## Status
 
-The compiler, anchoring and canvas join are working and verified (15 checks).
-Persistence exists (`apps/server`, verified end-to-end through a real browser
-against Postgres — 8 checks). Not yet built: the agent loop that writes the
-file tree, and any UI beyond the harness.
+The compiler, anchoring and canvas join are working and verified. Persistence
+exists (`apps/server`, verified end-to-end through a real browser against
+Postgres — 8 checks) and is wired into the Blackbird join (`apps/web/blackbird-join`
+— compile, comments, multiplayer sync, and loading a real persisted prototype
+by id are each independently verified, 4-6 checks apiece). Not yet built: the
+agent loop that writes the file tree.

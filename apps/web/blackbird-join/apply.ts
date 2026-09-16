@@ -50,6 +50,8 @@ function getAliasBlock(): string {
 	const anchoring = path.join(APP, "src/anchoring");
 	const blackbird = path.join(APP, "src/blackbird");
 	const fixtures = path.join(APP, "src/fixtures");
+	const api = path.join(APP, "src/api");
+	const persistence = path.join(APP, "src/prototype");
 
 	// Array form, most-specific first: Vite's object aliases are prefix matches,
 	// so a bare "@wonderful/ui" entry would swallow "@wonderful/ui/styles.css".
@@ -58,6 +60,10 @@ function getAliasBlock(): string {
       { find: "@drydock/anchoring", replacement: ${JSON.stringify(anchoring)} },
       { find: "@drydock/blackbird", replacement: ${JSON.stringify(blackbird)} },
       { find: "@drydock/fixtures", replacement: ${JSON.stringify(fixtures)} },
+      // The persistence client — same server the standalone harness talks to,
+      // so a prototype saved there opens here too.
+      { find: "@drydock/api", replacement: ${JSON.stringify(api)} },
+      { find: "@drydock/persistence", replacement: ${JSON.stringify(persistence)} },
       { find: "@drydock", replacement: ${JSON.stringify(drydock)} },
       // Regex, not a plain string: Vite's string aliases are prefix matches on
       // the bare id, so "@wonderful/ui/styles.css" never matches the
