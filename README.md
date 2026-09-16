@@ -39,6 +39,19 @@ reproducible from the pinned commit, a design-system bump is a one-line diff
 rather than a few thousand, and this repo's history does not accumulate another
 repository's source.
 
+### Staying in sync
+
+The pin is deliberately static — nothing re-fetches on its own — so it can go
+stale silently while `libs/ui`/`libs/theme` keep moving in the monorepo.
+`pnpm run check:design-system` asks the GitHub API whether either path has
+changed since the pinned commit and lists what landed if so; it also runs
+(non-blocking) before `pnpm run dev`, so starting work is when you find out,
+not the next time something looks subtly off. It needs a `GITHUB_TOKEN`/
+`GH_TOKEN` env var or an authenticated `gh` CLI to read the (private) monorepo;
+without one it says so rather than reporting a false "up to date". Finding it
+stale means: `pnpm run sync:design-system`, then `pnpm install`, then
+`pnpm run verify` to confirm nothing broke.
+
 ## Getting started
 
 ```bash
@@ -74,6 +87,7 @@ invisible unless you show it.
 | `apps/web/src/blackbird/` | Packaging a compiled prototype as an infinite-canvas frame |
 | `apps/web/blackbird-join/` | An idempotent patcher that joins the engine to a Blackbird checkout without modifying its canvas, contract, comments or service worker |
 | `scripts/fetchDesignSystem.ts` | The only link to the monorepo |
+| `scripts/checkDesignSystemStaleness.ts` | Reports whether the vendored pin is behind `libs/ui`/`libs/theme` |
 
 ## The one real limitation
 
@@ -86,5 +100,6 @@ alternative — `gap` on a `Layout.*`, a `Card`'s own inset, a design token.
 ## Status
 
 The compiler, anchoring and canvas join are working and verified (15 checks).
-Not yet built: persistence (a prototype currently lives only as long as the
-tab), the agent loop that writes the file tree, and any UI beyond the harness.
+Persistence exists (`apps/server`, verified end-to-end through a real browser
+against Postgres — 8 checks). Not yet built: the agent loop that writes the
+file tree, and any UI beyond the harness.

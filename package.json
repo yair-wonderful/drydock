@@ -9,6 +9,8 @@
 	},
 	"scripts": {
 		"sync:design-system": "node scripts/fetchDesignSystem.ts",
+		"check:design-system": "node scripts/checkDesignSystemStaleness.ts",
+		"predev": "node scripts/checkDesignSystemStaleness.ts || true",
 		"dev": "pnpm --filter @drydock/web dev",
 		"build": "pnpm --filter @drydock/web build",
 		"typecheck": "pnpm -r typecheck",
