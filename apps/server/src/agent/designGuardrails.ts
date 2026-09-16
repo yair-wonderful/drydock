@@ -53,14 +53,33 @@ this is shown to whoever reads the prototype, not graded against you:
 - \`mockData\`: what's mocked and how, one sentence.
 - \`knownGaps\`: things intentionally not wired for real (e.g. "permissions
   not enforced", "search is client-side only") — empty array if none.
-- \`rubric.wonderfulFit\`: "strong" | "medium" | "weak" — does this read as an
-  actual Wonderful product screen, not a generic SaaS landing page?
-- \`rubric.handoffReadiness\`: "strong" | "medium" | "weak" — could an
-  engineer tell what to copy, what to replace, and what's intentionally
-  mocked?
+
+Rate yourself "strong" | "medium" | "weak" on the five things a Wonderful
+designer actually flags. Be honest — a "weak" tells a reviewer where to
+look and costs you nothing:
+- \`rubric.contrastLadder\`: does every text and icon sit on the 3-step
+  ladder, and do siblings inside ONE control agree with each other? (The
+  most common real failure, and it cuts both ways: an icon too dark beside
+  a placeholder too light, in the same field.)
+- \`rubric.spacingRhythm\`: did every gap come off the scale — no zero-gap
+  pairing, and no dead space either?
+- \`rubric.affordanceClarity\`: does everything that looks interactive act
+  interactive, and is exactly one action styled primary?
+- \`rubric.containerDepth\`: is every nested container earning it, or is
+  there a box inside a box for its own sake?
+- \`rubric.componentProvenance\`: is every part a real @wonderful/ui-base
+  component or an honest composition of primitives — nothing hand-rolled
+  that the design system already owns?
+
+Plus:
 - \`rubric.stateCoverage\`: which of loading / empty / error / success /
   disabled / needs-attention you covered where relevant, and which you
-  didn't — one sentence, not a checklist dump.`;
+  didn't — one sentence, not a checklist dump.
+- \`rubric.selfFlagged\`: the comments you expect a Wonderful reviewer to
+  leave on this screen — short, specific, in their voice ("placeholder too
+  light", "why box in box?", "Primary?"). Empty array only if you genuinely
+  can't find one. Predicting the review honestly is worth more than a
+  screen that claims to need none.`;
 
 const ALLOWED_BARE_IMPORTS = new Set(["react", "react-dom", "react/jsx-runtime", "@wonderful/ui-base"]);
 
@@ -102,6 +121,44 @@ const ICON_ONLY_CONTROL_PATTERN = /<(?:Button|button)\b((?:(?!\/?>)[\s\S])*)\/>/
 const INLINE_RECORD_ARRAY_PATTERN = /\}\s*,\s*\{/g;
 const INLINE_RECORD_ARRAY_THRESHOLD = 2; // 2 boundaries = 3 adjacent object literals.
 
+/**
+ * The following four checks come from Wonderful's own internal design-craft
+ * skills (`ui-visual-design`, `ui-components`; see `visualDesignPrinciples.ts`),
+ * which already treat each of these as a hard/iron rule — no exceptions, not
+ * a judgment call. That makes them a match for this repo's own promotion
+ * rule: mechanically checkable AND already non-negotiable, not merely
+ * aesthetic preference.
+ */
+
+/** `text-transform: uppercase`, or Tailwind's `uppercase` utility used
+ * inside a `className`. Scoped to the `className` value specifically
+ * (rather than a bare word search) so a real word like "Uppercase" in
+ * ordinary UI copy or a comment is never mistaken for the class. */
+const UPPERCASE_CSS_TRANSFORM_PATTERN = /text-transform\s*:\s*uppercase/;
+const UPPERCASE_CLASSNAME_PATTERN =
+	/className\s*=\s*(?:"[^"]*\buppercase\b[^"]*"|'[^']*\buppercase\b[^']*'|\{[^}]*\buppercase\b[^}]*\})/;
+
+/** Hex colors, rgb()/rgba()/hsl()/hsla(), or a raw Tailwind color-shade
+ * utility — all three are "hardcode a color" under a different spelling. */
+const HARDCODED_COLOR_PATTERN =
+	/#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b|\b(?:rgb|rgba|hsl|hsla)\s*\(|\b(?:bg|text|border|from|via|to|ring|fill|stroke)-(?:red|blue|green|yellow|gray|grey|slate|zinc|neutral|stone|purple|violet|pink|rose|indigo|orange|amber|lime|emerald|teal|cyan|sky|fuchsia)-\d{2,3}\b/;
+
+/** Tailwind's arbitrary-value bracket syntax (`w-[31px]`, `text-[13px]`,
+ * `pt-[37px]`) — if it doesn't fit the design system's own scale, the
+ * layout is off-grid, not the utility. */
+const ARBITRARY_TAILWIND_VALUE_PATTERN = /\b[a-z][a-z-]*-\[[^\]]+\]/;
+
+// NOTE: the uploaded ui-components skill also states a bare "Stack takes
+// only gap + children — no className" iron rule. Deliberately NOT enforced
+// here (and not asserted in the prompt): this repo's own known-good,
+// actually-compiling fixture (systemPrompt.ts's COMPONENT_EXAMPLE, the same
+// one apps/web's verify.ts proves against the real compiler) uses
+// `<Layout.Stack gap="lg" className="p-8">` successfully. The skill's rule
+// most likely describes a different, bare `Stack` export than `Layout.Stack`
+// — but a mechanical gate or prompt claim contradicted by empirically
+// verified behavior is worse than no gate at all, so this stays unenforced
+// pending clarification of which component the rule actually applies to.
+
 const checkFile = (file: PrototypeFile): GuardrailViolation[] => {
 	const violations: GuardrailViolation[] = [];
 	const isData = file.path.endsWith(".json") || /data\.tsx?$/i.test(file.path);
@@ -128,6 +185,30 @@ const checkFile = (file: PrototypeFile): GuardrailViolation[] => {
 		violations.push({
 			rule: "no-inline-styles",
 			message: "contains an inline style={{...}} — use the design system's spacing/layout props instead",
+			file: file.path,
+		});
+	}
+
+	if (UPPERCASE_CSS_TRANSFORM_PATTERN.test(file.contents) || UPPERCASE_CLASSNAME_PATTERN.test(file.contents)) {
+		violations.push({
+			rule: "no-uppercase-text-transform",
+			message: "renders text in all caps (text-transform: uppercase or an \"uppercase\" class) — never do this to a word or sentence a person reads",
+			file: file.path,
+		});
+	}
+
+	if (HARDCODED_COLOR_PATTERN.test(file.contents)) {
+		violations.push({
+			rule: "no-hardcoded-colors",
+			message: "hardcodes a color (hex/rgb/hsl, or a raw Tailwind color-shade class) instead of a design-system token",
+			file: file.path,
+		});
+	}
+
+	if (ARBITRARY_TAILWIND_VALUE_PATTERN.test(file.contents)) {
+		violations.push({
+			rule: "no-arbitrary-tailwind-values",
+			message: "uses an arbitrary bracketed Tailwind value (e.g. w-[31px]) — if it doesn't fit the scale, the layout is off-grid",
 			file: file.path,
 		});
 	}

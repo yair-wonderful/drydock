@@ -1,6 +1,7 @@
 export { DEFAULT_ENTRY_POINT, MAX_FILES, MAX_PATH_BYTES, MAX_VERSION_BYTES } from "./limits.ts";
 export type {
 	DesignReview,
+	DesignReviewRubric,
 	GuardrailFitRating,
 	GuardrailViolation,
 	PrototypeFile,

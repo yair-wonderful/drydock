@@ -90,6 +90,58 @@ describe("checkDesignGuardrails", () => {
 		assert.deepEqual(violations, []);
 	});
 
+	it("flags an uppercase Tailwind class", () => {
+		const violations = checkDesignGuardrails(okFile(`<Text variant="label" className="uppercase tracking-wide">Status</Text>;\n`));
+		assert.equal(violations.length, 1);
+		assert.equal(violations[0].rule, "no-uppercase-text-transform");
+	});
+
+	it("flags a text-transform: uppercase declaration", () => {
+		const violations = checkDesignGuardrails(okFile(`const label = "text-transform: uppercase";\n`));
+		assert.equal(violations[0].rule, "no-uppercase-text-transform");
+	});
+
+	it("does not mistake the word 'uppercase' in ordinary copy for the class", () => {
+		const violations = checkDesignGuardrails(okFile(`<Text variant="body">Names are matched without uppercase sensitivity</Text>;\n`));
+		assert.deepEqual(violations, []);
+	});
+
+	it("flags a hex color", () => {
+		const violations = checkDesignGuardrails(okFile(`<Tag color="#f43f5e" text="Failed" />;\n`));
+		assert.equal(violations.length, 1);
+		assert.equal(violations[0].rule, "no-hardcoded-colors");
+	});
+
+	it("flags a raw Tailwind color-shade class", () => {
+		const violations = checkDesignGuardrails(okFile(`<Layout.Row className="text-gray-500">x</Layout.Row>;\n`));
+		assert.equal(violations[0].rule, "no-hardcoded-colors");
+	});
+
+	it("flags an rgba() color", () => {
+		const violations = checkDesignGuardrails(okFile(`const shade = "rgba(0, 0, 0, 0.4)";\n`));
+		assert.equal(violations[0].rule, "no-hardcoded-colors");
+	});
+
+	it("does not flag the design system's own semantic color props", () => {
+		const violations = checkDesignGuardrails(
+			okFile(`<Text variant="body-sm" color="secondary">x</Text>;\n<Tag color="green" text="Live" />;\n`),
+		);
+		assert.deepEqual(violations, []);
+	});
+
+	it("flags an arbitrary bracketed Tailwind value", () => {
+		const violations = checkDesignGuardrails(okFile(`<Layout.Stack className="pt-[37px]">x</Layout.Stack>;\n`));
+		assert.equal(violations.length, 1);
+		assert.equal(violations[0].rule, "no-arbitrary-tailwind-values");
+	});
+
+	it("does not flag a typed array or a scale-step utility class", () => {
+		const violations = checkDesignGuardrails(
+			okFile(`const list = agents as Agent[];\n<Layout.Stack gap="lg" className="p-8 gap-md">x</Layout.Stack>;\n`),
+		);
+		assert.deepEqual(violations, []);
+	});
+
 	it("attributes each violation to the file it was found in", () => {
 		const violations = checkDesignGuardrails([
 			{ path: "src/index.tsx", contents: `import x from "left-pad";\n` },

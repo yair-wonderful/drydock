@@ -1,5 +1,5 @@
 import { useCallback, useState, type ChangeEvent } from "react";
-import type { DesignReview } from "@drydock/prototype";
+import type { DesignReview, DesignReviewRubric } from "@drydock/prototype";
 import { generatePrototype, rewritePrototype } from "../api/agentClient";
 import { ApiError } from "../api/httpClient";
 import type { PrototypeTree } from "../drydock";
@@ -116,7 +116,20 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 }
 
 /**
- * Wonderful Design Guardrails v0's rubric layer, shown alongside every
+ * The five rated axes, in the order a reviewer scans them — which is
+ * roughly how often each one is the actual problem, per the review corpus
+ * at apps/server/src/agent/designReviewCorpus.ts.
+ */
+const RUBRIC_AXES = [
+	{ key: "contrastLadder", label: "contrast" },
+	{ key: "spacingRhythm", label: "spacing" },
+	{ key: "affordanceClarity", label: "affordance" },
+	{ key: "containerDepth", label: "nesting" },
+	{ key: "componentProvenance", label: "provenance" },
+] as const satisfies readonly { key: keyof DesignReviewRubric; label: string }[];
+
+/**
+ * Wonderful Design Guardrails' rubric layer, shown alongside every
  * generation — advisory, never blocking. See
  * docs/wonderful-design-guardrails.md for what each field means and why
  * this stays a self-report rather than a mechanical check.
@@ -138,14 +151,23 @@ function DesignReviewPanel({ review }: { review: DesignReview }) {
 				<dd>{review.knownGaps.length > 0 ? review.knownGaps.join("; ") : "none"}</dd>
 			</dl>
 			<div className="design-review-rubric">
-				<span className={`rubric-pill rubric-${review.rubric.wonderfulFit}`}>
-					wonderful fit: {review.rubric.wonderfulFit}
-				</span>
-				<span className={`rubric-pill rubric-${review.rubric.handoffReadiness}`}>
-					handoff: {review.rubric.handoffReadiness}
-				</span>
+				{RUBRIC_AXES.map(({ key, label }) => (
+					<span key={key} className={`rubric-pill rubric-${review.rubric[key]}`}>
+						{label}: {review.rubric[key]}
+					</span>
+				))}
 			</div>
 			<p className="muted">{review.rubric.stateCoverage}</p>
+			{review.rubric.selfFlagged.length > 0 && (
+				<div className="design-review-flagged" data-testid="design-review-flagged">
+					<h4>what a reviewer would probably flag</h4>
+					<ul>
+						{review.rubric.selfFlagged.map((note) => (
+							<li key={note}>{note}</li>
+						))}
+					</ul>
+				</div>
+			)}
 		</div>
 	);
 }

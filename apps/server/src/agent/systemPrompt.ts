@@ -15,6 +15,8 @@
  */
 
 import { DESIGN_GUARDRAILS_PROMPT } from "./designGuardrails.ts";
+import { getReviewerVoicePrompt } from "./designReviewCorpus.ts";
+import { VISUAL_DESIGN_PROMPT } from "./visualDesignPrinciples.ts";
 
 const ENTRY_POINT_EXAMPLE = `import Dashboard from "./Dashboard";
 
@@ -134,8 +136,22 @@ A component using the design system correctly:
 ${COMPONENT_EXAMPLE}\`\`\`
 `;
 
+/**
+ * What real callers use: the rules and example, then Wonderful's own design
+ * canon, then the guardrails and rubric, then a handful of real review
+ * comments in the reviewer's own voice.
+ *
+ * The reviewer-voice section goes LAST deliberately. Everything above it
+ * describes how to build the screen; it is the only part that describes how
+ * the screen will be read, so it is the last thing in context before the
+ * model starts writing.
+ */
 export const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}
+${VISUAL_DESIGN_PROMPT}
+
 ${DESIGN_GUARDRAILS_PROMPT}
+
+${getReviewerVoicePrompt()}
 `;
 
 /** The instruction wrapper for a rewrite: the current tree plus what changed. */

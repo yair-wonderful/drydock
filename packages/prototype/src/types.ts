@@ -78,15 +78,57 @@ export type DesignReview = {
 	mockData: string;
 	/** Things intentionally NOT wired for real — e.g. "permissions not enforced". */
 	knownGaps: string[];
-	rubric: {
-		/** Does this read as a Wonderful product screen, not a generic SaaS mock? */
-		wonderfulFit: GuardrailFitRating;
-		/** Could an engineer tell what to copy, replace, and keep mocked? */
-		handoffReadiness: GuardrailFitRating;
-		/** Which of loading/empty/error/success/disabled/needs-attention are
-		 * covered where relevant, and which are missing. */
-		stateCoverage: string;
-	};
+	rubric: DesignReviewRubric;
+};
+
+/**
+ * The self-assessment axes, derived from what a Wonderful design reviewer
+ * actually flags rather than from first principles — see
+ * `apps/server/src/agent/designReviewCorpus.ts`, a transcription of 31
+ * review comments on four real Wonderful screens, and
+ * `docs/wonderful-design-guardrails.md` for how the axes were chosen.
+ *
+ * The previous axes (`wonderfulFit`, `handoffReadiness`) were replaced
+ * because they were too abstract to act on: a "medium" told a reviewer
+ * nothing about where to look. These five name the specific failure
+ * clusters that account for nearly every real comment, so a weak rating
+ * points at a part of the screen.
+ */
+export type DesignReviewRubric = {
+	/** Does every text and icon sit on the 3-step ladder, and do siblings
+	 * inside one control agree? The single most-flagged failure in the
+	 * corpus (8 of 34 remarks), and it cuts both ways — too light AND too
+	 * dark, sometimes in the same field. */
+	contrastLadder: GuardrailFitRating;
+	/** Did every gap come off the spacing scale, with no zero-gap pairing and
+	 * no dead space? Second most-flagged (6 of 34). */
+	spacingRhythm: GuardrailFitRating;
+	/** Does everything that looks interactive act interactive, and is exactly
+	 * one action styled primary? */
+	affordanceClarity: GuardrailFitRating;
+	/** Is every nested container earning its nesting — no box inside a box
+	 * for its own sake? */
+	containerDepth: GuardrailFitRating;
+	/** Is every part a real @wonderful/ui-base component or an honest
+	 * composition of primitives, with nothing hand-rolled that the design
+	 * system already owns? */
+	componentProvenance: GuardrailFitRating;
+	/** Which of loading/empty/error/success/disabled/needs-attention are
+	 * covered where relevant, and which are missing.
+	 *
+	 * Kept from the original rubric despite having no corpus support: the
+	 * corpus is static screenshots of one state each, so its silence on
+	 * state coverage is a sampling artifact, not evidence it doesn't
+	 * matter. */
+	stateCoverage: string;
+	/**
+	 * Comments you expect a Wonderful reviewer to leave on this screen —
+	 * short, specific, in their voice ("placeholder too light", "why box in
+	 * box?"). The most useful field in the rubric: it turns the model's
+	 * uncertainty into the reviewer's agenda instead of hiding it behind a
+	 * rating.
+	 */
+	selfFlagged: string[];
 };
 
 /** One mechanically-checked hard-gate failure — see

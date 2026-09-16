@@ -83,35 +83,104 @@ would, per the existing compile-time rejection Drydock has always had.
   `aria-labelledby`, or an associated `<label>`.
 - An icon-only control (no visible text) has an `aria-label`.
 
-## Rubric (v0, shown not enforced)
+## The review corpus, and what it changed
 
-Each generation includes an honest self-report against:
+The rubric below is not derived from first principles. It is derived from
+`apps/server/src/agent/designReviewCorpus.ts` — a verbatim transcription of
+31 comment pins (34 individual remarks) that a Wonderful designer left on
+four real Wonderful screens in the `DS-examples-review` Figma file, where
+each screen appears twice: a reference frame the design team considers
+good, and the same screen as it ships in production.
 
-- **Purpose clarity** — is the screen's job obvious in the first five
-  seconds?
-- **Action hierarchy** — one clear primary action, secondary actions
-  visibly demoted?
-- **Information density** — reads as an internal Wonderful product screen,
-  not a landing page?
-- **State coverage** — loading, empty, error, success, disabled, and
-  needs-attention states considered where relevant?
-- **Data realism** — mock data looks operational and plausible, not lorem
-  ipsum or a toy example?
-- **Workflow realism** — controls imply real product flows, not decorative
-  UI?
-- **Wonderful tone** — calm, specific, direct copy; no generic SaaS fluff?
-- **Production handoff** — can an engineer tell what to copy, what to
-  replace, and what's intentionally mocked?
+Two findings from that corpus changed the design of this system rather
+than just adding to it.
 
-The shipped `review` shape covers `purpose`, `primaryAction`,
-`componentsUsed`, `mockData`, `knownGaps`, and three summarizing ratings
-(`rubric.wonderfulFit`, `rubric.handoffReadiness`, `rubric.stateCoverage`)
-rather than all eight items individually — granular enough to be useful,
-compact enough that the model fills it out honestly rather than padding a
-checklist.
+**Finding 1: none of the nine hard gates would have caught any of the 34
+remarks.** Production code already imports the right components, uses the
+right tokens, and has no inline styles — it passes every gate we have.
+Every defect the reviewer found was in composition and calibration. The
+gate layer is at its useful limit; the leverage is in the prompt and the
+rubric. The corpus asserts this in data rather than prose: every finding
+carries a `mechanicallyCheckable` flag, all are currently `false`, and a
+test fails if that ever stops being true — which would mean a new gate is
+genuinely owed.
+
+**Finding 2: four of the pins are on the *reference* frame.** The screens
+the design team holds up as good get picked apart too. There is no clean
+exemplar, so a guardrail system built by imitating Wonderful's best
+screens would inherit their defects along with their virtues. This is why
+the prompt teaches the *reviewer's* eye rather than a canonical screen.
+
+The clusters, by frequency:
+
+| Cluster | n | What it sounds like |
+|---|---|---|
+| Contrast / weight | 8 | "Not readable", "Text too light", "Too dark", "Icons look darker than text", "Too colorfull" |
+| Spacing | 6 | "Spacing between tabs", "not enough space", "Too much air?" |
+| Geometry | 5 | "Feels to narrow (height)", "Corner radius not accurate", "button ratio feels off" |
+| Component provenance | 5 | "Is this a thing?", "Do we have a component for that?", "deprecated style" |
+| Affordance | 3 | "Looks like a button", "Primary?", "Should be icon only" |
+| Container nesting | 3 | "why box in box?", "The full width button inside the gray box is weird" |
+| Unsettled | 3 | "Toggle should be on the left?", "Do we like the shadow?" |
+| State legibility | 1 | "Which one is selected" |
+
+Note the contrast cluster cuts **both ways** — an icon too dark sitting
+next to a placeholder too light, in the same field. The rule is not "go
+darker"; it is that every element sits at one correct weight and siblings
+inside a single control agree with each other.
+
+Note also that **`unsettled` findings are questions, not rules.** They are
+kept because the frequency of a question is signal, but nothing derived
+from the corpus may turn one into an assertion — `getReviewerVoicePrompt`
+filters them out, and a test enforces that. Encoding an argument that
+hasn't finished is how a tool starts losing arguments on people's behalf.
+
+### The one cluster Drydock already wins
+
+"Do we have a component for that?", "Is this a thing?", "should this be a
+component?", "deprecated style" — five remarks asking whether what the
+reviewer is looking at is real. Drydock's browser compiler answers that
+mechanically, on every generation, before a human ever sees the screen.
+That is a structural advantage over a hand-built screen, and the reason
+`componentProvenance` is a rubric axis rather than a worry.
+
+## Rubric (shown, never enforced)
+
+Five rated axes — the clusters above, minus the ones that are questions or
+too rare to rate — plus two prose fields. Each is `strong` / `medium` /
+`weak`, and the point of the rating is to tell a reviewer **where to
+look**, which the previous axes (`wonderfulFit`, `handoffReadiness`)
+couldn't: a "medium" on "wonderful fit" names no part of the screen.
+
+- **`contrastLadder`** — does every text and icon sit on the 3-step ladder,
+  and do siblings inside one control agree?
+- **`spacingRhythm`** — did every gap come off the scale, with no zero-gap
+  pairing and no dead space?
+- **`affordanceClarity`** — does everything that looks interactive act
+  interactive, and is exactly one action styled primary?
+- **`containerDepth`** — is every nested container earning its nesting?
+- **`componentProvenance`** — is every part a real `@wonderful/ui-base`
+  component or an honest composition of primitives?
+
+Plus:
+
+- **`stateCoverage`** (prose) — which of loading / empty / error / success /
+  disabled / needs-attention are covered, and which aren't. Kept despite
+  having **no corpus support**: the corpus is static screenshots of one
+  state each, so its silence here is a sampling artifact, not evidence that
+  state coverage doesn't matter.
+- **`selfFlagged`** (list) — the comments the model expects a Wonderful
+  reviewer to leave on this screen, short and in their voice. The most
+  useful field in the rubric: it turns the model's uncertainty into the
+  reviewer's agenda instead of hiding it behind a rating.
 
 ## What's not in v0
 
+- **The corpus is not yet a scored benchmark.** It records what good
+  review looks like and feeds the prompt, but nothing yet runs a generated
+  screen against it and produces a number. That is the obvious next step,
+  and it is what would finally answer "is Drydock's output better than what
+  we ship today" — a question this project has never been able to answer.
 - Whether the model's self-rating is *accurate* is not itself checked.
   These are self-reports, not verified facts — see the note on
   `DesignReview` in `packages/prototype/src/types.ts`.
@@ -121,6 +190,7 @@ checklist.
   wrapping an input across multiple lines, for instance), because a gate
   that blocks should err toward missing a real violation rather than
   rejecting valid work.
-- No mechanism yet aggregates `knownGaps` or weak ratings across
-  generations to surface promotion candidates for the gate layer — that's
-  the natural next step once there's enough real usage to look at.
+- No mechanism yet aggregates `knownGaps`, `selfFlagged`, or weak ratings
+  across generations to surface promotion candidates for the gate layer.
+  Per Finding 1 this is now lower priority than it looked: the corpus
+  suggests the next real win is in the prompt, not the gates.

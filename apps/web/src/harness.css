@@ -149,7 +149,10 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 11px;
 .design-review dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 2px 8px; }
 .design-review dt { opacity: 0.6; }
 .design-review dd { margin: 0; }
-.design-review-rubric { display: flex; gap: 6px; margin: 8px 0 4px; }
+.design-review-rubric { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.design-review-flagged { margin-top: 8px; }
+.design-review-flagged h4 { margin: 0 0 4px; font-size: inherit; font-weight: 500; opacity: 0.6; }
+.design-review-flagged ul { margin: 0; padding-left: 16px; }
 .rubric-pill {
 	font-size: 11px;
 	padding: 2px 7px;
