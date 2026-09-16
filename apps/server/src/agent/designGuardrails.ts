@@ -44,6 +44,13 @@ wrong means a rejection and a chance to fix it, not a silent quality miss:
 - Keep sample data in its own file (a \`.json\` import, or a small
   \`*Data.ts\` module) rather than a large literal inlined in a component —
   the UI and the data it happens to be showing are different things.
+- Use logical direction utilities, never physical ones: \`ps-\`/\`pe-\`,
+  \`ms-\`/\`me-\`, \`text-start\`/\`text-end\`, \`start-\`/\`end-\`,
+  \`border-s-\`/\`border-e-\` — NOT \`pl-\`, \`pr-\`, \`ml-\`, \`mr-\`,
+  \`text-left\`, \`text-right\`, \`left-\`, \`right-\`. Most Wonderful
+  traffic is Hebrew and Arabic; a physically-anchored layout mirrors wrong.
+- Never \`transition-all\` (or \`transition: all\`, \`will-change: all\`).
+  Name the exact properties that change.
 
 Also include a \`review\` alongside your files, honestly self-assessed —
 this is shown to whoever reads the prototype, not graded against you:
@@ -72,6 +79,10 @@ look and costs you nothing:
   that the design system already owns?
 
 Plus:
+- \`rubric.agentLineage\`: if this screen shows anything an agent decided or
+  did, say where a reader goes to see WHY — the path from conclusion back
+  to premise. If the screen has no agent output on it, say so plainly;
+  that's a real answer, not a miss.
 - \`rubric.stateCoverage\`: which of loading / empty / error / success /
   disabled / needs-attention you covered where relevant, and which you
   didn't — one sentence, not a checklist dump.
@@ -148,6 +159,52 @@ const HARDCODED_COLOR_PATTERN =
  * layout is off-grid, not the utility. */
 const ARBITRARY_TAILWIND_VALUE_PATTERN = /\b[a-z][a-z-]*-\[[^\]]+\]/;
 
+/**
+ * The next two come from `Wonderful.ai: UX Guardrails for Agentic B2B` (see
+ * `agenticUxGuardrails.ts`), which states both as "never". Both were
+ * verified against the vendored design system before being gated, because
+ * a gate whose fix the compiler then rejects is worse than no gate.
+ */
+
+/**
+ * Physical direction utilities, where the design system uses logical ones.
+ *
+ * The business reason is load-bearing rather than stylistic: most Wonderful
+ * conversation traffic is Hebrew and Arabic, so a physically-anchored
+ * layout is mirrored wrong for the majority of real use.
+ *
+ * VERIFIED SAFE TO GATE: the vendored design system uses the logical forms
+ * heavily (27 × `text-start`, dozens of `ps-`/`pe-`/`ms-`/`me-`, plus
+ * `start-`/`end-`, `border-s-`, `rounded-s-`/`rounded-e-`), so Tailwind has
+ * scanned and emitted them and `apps/web`'s utility check will accept the
+ * fix this gate asks for. This repo's own known-good fixture
+ * (`prototypeTree.ts` / `COMPONENT_EXAMPLE`) contains zero physical
+ * direction utilities, so the gate does not contradict it.
+ *
+ * `rounded-l`/`rounded-r` are matched with a trailing boundary so the very
+ * common `rounded-lg` is never mistaken for a physical corner utility.
+ */
+const PHYSICAL_DIRECTION_UTILITY = String.raw`(?:(?:pl|pr|ml|mr|border-l|border-r|left|right)-[a-z0-9.]|rounded-[lr]\b|text-(?:left|right)\b)`;
+const PHYSICAL_DIRECTION_PATTERN = new RegExp(
+	`className\\s*=\\s*(?:"[^"]*${PHYSICAL_DIRECTION_UTILITY}[^"]*"|'[^']*${PHYSICAL_DIRECTION_UTILITY}[^']*'|\\{[^}]*${PHYSICAL_DIRECTION_UTILITY}[^}]*\\})`,
+);
+
+/**
+ * `transition-all` / `transition: all` / `will-change: all` — the document
+ * says name the exact properties that change, because the daily loop is
+ * someone triaging rows fast and a blanket transition animates things
+ * nobody asked to move.
+ *
+ * NOT redundant with the compile-time utility check: the design system
+ * itself ships `transition-all` (12 occurrences), so Tailwind emits it and
+ * the compiler accepts it. This gate is the only thing standing between a
+ * model's reflexive `transition-all duration-200` and the output. That the
+ * design system violates its own document here is real, and flagged in
+ * `docs/wonderful-design-guardrails.md` rather than quietly resolved in
+ * either direction — a prototype author is still bound by the rule.
+ */
+const TRANSITION_ALL_PATTERN = /\btransition-all\b|transition\s*:\s*all\b|will-change\s*:\s*all\b/;
+
 // NOTE: the uploaded ui-components skill also states a bare "Stack takes
 // only gap + children — no className" iron rule. Deliberately NOT enforced
 // here (and not asserted in the prompt): this repo's own known-good,
@@ -209,6 +266,23 @@ const checkFile = (file: PrototypeFile): GuardrailViolation[] => {
 		violations.push({
 			rule: "no-arbitrary-tailwind-values",
 			message: "uses an arbitrary bracketed Tailwind value (e.g. w-[31px]) — if it doesn't fit the scale, the layout is off-grid",
+			file: file.path,
+		});
+	}
+
+	if (PHYSICAL_DIRECTION_PATTERN.test(file.contents)) {
+		violations.push({
+			rule: "no-physical-direction-utilities",
+			message:
+				"uses a physical direction utility (pl-/pr-/ml-/mr-/text-left/text-right/left-/right-) — most Wonderful traffic is RTL, so use the logical form (ps-/pe-, ms-/me-, text-start/text-end, start-/end-)",
+			file: file.path,
+		});
+	}
+
+	if (TRANSITION_ALL_PATTERN.test(file.contents)) {
+		violations.push({
+			rule: "no-transition-all",
+			message: "uses transition-all / transition: all / will-change: all — name the exact properties that change",
 			file: file.path,
 		});
 	}

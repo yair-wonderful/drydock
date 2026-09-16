@@ -157,6 +157,7 @@ function DesignReviewPanel({ review }: { review: DesignReview }) {
 					</span>
 				))}
 			</div>
+			<p className="muted">{review.rubric.agentLineage}</p>
 			<p className="muted">{review.rubric.stateCoverage}</p>
 			{review.rubric.selfFlagged.length > 0 && (
 				<div className="design-review-flagged" data-testid="design-review-flagged">

@@ -142,6 +142,61 @@ describe("checkDesignGuardrails", () => {
 		assert.deepEqual(violations, []);
 	});
 
+	it("flags a physical direction utility", () => {
+		const violations = checkDesignGuardrails(okFile(`<Layout.Row className="pl-4 mr-2">x</Layout.Row>;\n`));
+		assert.equal(violations.length, 1);
+		assert.equal(violations[0].rule, "no-physical-direction-utilities");
+	});
+
+	it("flags text-left and absolute left-/right- positioning", () => {
+		assert.equal(
+			checkDesignGuardrails(okFile(`<Text variant="body" className="text-left">x</Text>;\n`))[0].rule,
+			"no-physical-direction-utilities",
+		);
+		assert.equal(
+			checkDesignGuardrails(okFile(`<Badge className="absolute right-0 top-0" />;\n`))[0].rule,
+			"no-physical-direction-utilities",
+		);
+	});
+
+	it("allows the logical forms the design system actually ships", () => {
+		const violations = checkDesignGuardrails(
+			okFile(
+				`<Layout.Row className="ps-4 pe-2 ms-auto text-start border-s-0 rounded-s-none end-2">x</Layout.Row>;\n`,
+			),
+		);
+		assert.deepEqual(violations, []);
+	});
+
+	/** `rounded-lg` is everywhere; matching it as a physical corner utility
+	 * would make this gate unusable. */
+	it("does not mistake rounded-lg for a physical corner utility", () => {
+		const violations = checkDesignGuardrails(okFile(`<Card className="rounded-lg p-4">x</Card>;\n`));
+		assert.deepEqual(violations, []);
+	});
+
+	it("does not flag the words left or right in ordinary copy", () => {
+		const violations = checkDesignGuardrails(
+			okFile(`<Text variant="body">Swipe left or right to move between steps</Text>;\n`),
+		);
+		assert.deepEqual(violations, []);
+	});
+
+	it("flags transition-all", () => {
+		const violations = checkDesignGuardrails(
+			okFile(`<Button className="transition-all duration-200">Save</Button>;\n`),
+		);
+		assert.equal(violations.length, 1);
+		assert.equal(violations[0].rule, "no-transition-all");
+	});
+
+	it("allows a transition that names its properties", () => {
+		const violations = checkDesignGuardrails(
+			okFile(`<Button className="transition-opacity duration-150">Save</Button>;\n`),
+		);
+		assert.deepEqual(violations, []);
+	});
+
 	it("attributes each violation to the file it was found in", () => {
 		const violations = checkDesignGuardrails([
 			{ path: "src/index.tsx", contents: `import x from "left-pad";\n` },

@@ -113,6 +113,17 @@ export type DesignReviewRubric = {
 	 * composition of primitives, with nothing hand-rolled that the design
 	 * system already owns? */
 	componentProvenance: GuardrailFitRating;
+	/**
+	 * Where a reader goes to see WHY an agent concluded what it concluded —
+	 * the path from conclusion back to premise. "No agent output on this
+	 * screen" is a valid answer.
+	 *
+	 * Prose rather than a rating because the not-applicable case is common
+	 * and real: a settings screen has no lineage to show, and a "strong"
+	 * there would be noise. From the agentic-UX guardrails' first principle
+	 * — see `apps/server/src/agent/agenticUxGuardrails.ts`.
+	 */
+	agentLineage: string;
 	/** Which of loading/empty/error/success/disabled/needs-attention are
 	 * covered where relevant, and which are missing.
 	 *

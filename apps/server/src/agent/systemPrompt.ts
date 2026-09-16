@@ -14,6 +14,7 @@
  * writing a one-off example, so the rule is spelled out AND demonstrated.
  */
 
+import { AGENTIC_UX_PROMPT } from "./agenticUxGuardrails.ts";
 import { DESIGN_GUARDRAILS_PROMPT } from "./designGuardrails.ts";
 import { getReviewerVoicePrompt } from "./designReviewCorpus.ts";
 import { VISUAL_DESIGN_PROMPT } from "./visualDesignPrinciples.ts";
@@ -137,9 +138,15 @@ ${COMPONENT_EXAMPLE}\`\`\`
 `;
 
 /**
- * What real callers use: the rules and example, then Wonderful's own design
- * canon, then the guardrails and rubric, then a handful of real review
- * comments in the reviewer's own voice.
+ * What real callers use, ordered outside-in: the rules and example, then
+ * what kind of product this is (a human supervising agents), then how
+ * Wonderful composes a screen, then the gates and rubric, then a handful of
+ * real review comments in the reviewer's own voice.
+ *
+ * The agentic-UX layer comes before the visual canon on purpose. Getting
+ * spacing right on a screen that hides an agent's reasoning is a well-made
+ * prototype of the wrong product, so the model should know what it is
+ * building before it is told how to lay it out.
  *
  * The reviewer-voice section goes LAST deliberately. Everything above it
  * describes how to build the screen; it is the only part that describes how
@@ -147,6 +154,8 @@ ${COMPONENT_EXAMPLE}\`\`\`
  * model starts writing.
  */
 export const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}
+${AGENTIC_UX_PROMPT}
+
 ${VISUAL_DESIGN_PROMPT}
 
 ${DESIGN_GUARDRAILS_PROMPT}

@@ -14,6 +14,39 @@ necessarily read as *your* product. It only becomes genuinely useful once
 the organization's own standards — not just its components — are encoded
 into the tool. This document is that encoding for Wonderful.
 
+## What kind of product this is
+
+Before any rule about spacing or colour: almost every screen Drydock will
+be asked to generate is one where **an agent did something and a human has
+to decide whether to trust it**. Wonderful's own framing is a shift from
+*user-as-operator* to *user-as-manager* — people supervise, audit and
+authorise agents rather than driving the software themselves.
+
+That changes what a good screen is. The load-bearing rule, from
+`apps/server/src/agent/agenticUxGuardrails.ts`:
+
+> Never present an agent's conclusion without a visible, accessible path
+> back to its premise.
+
+Everything else in that layer follows from it — outcome at the top and the
+leading edge with raw payloads collapsed beneath; spacing that groups a
+task with its own execution trace (the gap *between* tasks at least twice
+the gap *within* one); affordances that distinguish human action from
+agent proposal from agent execution; friction that scales with
+reversibility rather than with the agent's confidence; the clean handoff
+that puts an agent's summary, its specific blocker, and the human controls
+in one container.
+
+Getting spacing right on a screen that hides an agent's reasoning is a
+well-made prototype of the wrong product. That's why this layer sits
+*before* the visual canon in the system prompt.
+
+Motion choreography from that document (cross-fade curves, entrance
+stagger timings) and GPU hints are deliberately **not** encoded — they're
+build-time implementation specs, and animation in a prototype competes
+with the layout it exists to get reviewed. The restraint half is kept, and
+gated.
+
 ## Two layers, on purpose
 
 **Hard gates** are objective and enforced now — a violation fails
@@ -82,6 +115,60 @@ would, per the existing compile-time rejection Drydock has always had.
 - Every form input has an accessible name — an `aria-label`,
   `aria-labelledby`, or an associated `<label>`.
 - An icon-only control (no visible text) has an `aria-label`.
+- No all-caps text (`uppercase`, `text-transform: uppercase`).
+- No hardcoded colours (hex, `rgb()`/`hsl()`, raw Tailwind colour-shade
+  classes) — use the design system's semantic tokens.
+- No arbitrary bracketed Tailwind values (`pt-[37px]`).
+- **Logical direction utilities only** — `ps-`/`pe-`, `ms-`/`me-`,
+  `text-start`/`text-end`, `start-`/`end-`, `border-s-`/`border-e-`, never
+  `pl-`/`pr-`/`ml-`/`mr-`/`text-left`/`text-right`/`left-`/`right-`. Most
+  Wonderful conversation traffic is Hebrew and Arabic, so a physically
+  anchored layout mirrors wrong for the majority of real use. Verified
+  before gating: the vendored design system uses the logical forms heavily
+  (27 × `text-start`, dozens of `ps-`/`pe-`/`ms-`/`me-`), so Tailwind emits
+  them and the compiler accepts the fix this gate asks for.
+- **Never `transition-all`** (or `transition: all`, `will-change: all`) —
+  name the properties that change. See the conflict note below.
+
+## Conflicts found while encoding the source documents
+
+Encoding an internal document against a real codebase surfaces places
+where the two disagree. These are recorded rather than silently resolved.
+
+**The design system violates the `transition-all` rule 12 times.** The
+agentic-UX guardrails say "Never use `transition: all`", but `vendor/ui`
+ships `transition-all` in 12 places, which means Tailwind emits it and the
+browser compiler will happily accept it. The gate above therefore isn't
+redundant with the compiler — it's the only thing that catches it. A
+prototype author is still bound by the rule; whether the design system
+should be too is a question for whoever owns both.
+
+**"Stack takes only gap + children" is not enforced.** The `ui-components`
+skill states it as an iron rule, but this repo's own verified, compiling
+fixture uses `<Layout.Stack gap="lg" className="p-8">`. The rule most
+likely describes a different, bare `Stack` export than `Layout.Stack`. A
+gate contradicted by empirically verified behaviour is worse than no gate,
+so it stays out pending clarification.
+
+**Optical alignment can't be expressed under the arbitrary-value gate.**
+The agentic-UX document asks for `icon-side padding = text-side padding −
+2px`, which requires a bracketed arbitrary value that this repo gates
+against. Resolved in favour of the gate: optical balance inside a button is
+the design system component's job, solved once, not something a prototype
+author hand-tunes per screen.
+
+**The `ui-components` skill file has an unresolved git merge conflict** in
+its own text (an "Iron rules" table appearing twice, under
+`<<<<<<< Updated upstream` / `>>>>>>> Stashed changes`). The fuller version
+was used, since it's a strict superset. That source file should still get
+its conflict resolved for real.
+
+**Two unknowns in the agentic-UX document**, flagged rather than guessed:
+its foundational principles P1–P10 are cited but the document defining them
+was never supplied, so only the applied layer is encoded here; and it names
+the design system `better-layout` / `better-ui` where Drydock targets
+`@wonderful/ui` / `@wonderful/ui-base`, so no rule depends on a `better-*`
+API existing.
 
 ## The review corpus, and what it changed
 
@@ -164,6 +251,12 @@ couldn't: a "medium" on "wonderful fit" names no part of the screen.
 
 Plus:
 
+- **`agentLineage`** (prose) — where a reader goes to see *why* an agent
+  concluded what it concluded. From the agentic-UX guardrails' first
+  principle: never present an AI conclusion without an accessible path to
+  its premise. Prose rather than a rating because "no agent output on this
+  screen" is a common and legitimate answer, and a `strong` there would be
+  noise.
 - **`stateCoverage`** (prose) — which of loading / empty / error / success /
   disabled / needs-attention are covered, and which aren't. Kept despite
   having **no corpus support**: the corpus is static screenshots of one

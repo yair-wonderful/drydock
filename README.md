@@ -89,6 +89,7 @@ invisible unless you show it.
 | `scripts/fetchDesignSystem.ts` | The only link to the monorepo |
 | `scripts/checkDesignSystemStaleness.ts` | Reports whether the vendored pin is behind `libs/ui`/`libs/theme` |
 | `apps/server/src/agent/` | The agent loop: generate a prototype from a prompt, or rewrite the current one per an instruction, through OpenAI structured outputs |
+| `apps/server/src/agent/agenticUxGuardrails.ts` | The user-as-manager layer: traceability, agency affordances, reversibility, the clean handoff — what makes a screen read as Wonderful before any styling does |
 | `apps/server/src/agent/designReviewCorpus.ts` | 31 real Wonderful design-review pins, transcribed verbatim — the labelled record the rubric and prompt are derived from |
 | `docs/wonderful-design-guardrails.md` | Wonderful Design Guardrails — the hard gates and rubric the agent loop is held to, what the review corpus changed about both, and why |
 
