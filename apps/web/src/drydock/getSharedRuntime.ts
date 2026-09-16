@@ -76,6 +76,19 @@ export default async function getSharedRuntime(): Promise<void> {
 		import("react/jsx-runtime"),
 		// The prototype says `@wonderful/ui-base`; in-monorepo that IS
 		// `@wonderful/ui` — the same library, consumed from source.
+		//
+		// This MUST stay a string literal. It is what lets Vite's dev server and
+		// its production bundler statically resolve and correctly serve/bundle
+		// the real module — turning it into a non-literal (a string variable) to
+		// dodge TypeScript's own resolution breaks the app at runtime, not just
+		// in a type sense: the mount silently times out because the browser gets
+		// a bare, unmapped specifier with nothing to resolve it against. Verified
+		// by testing both forms against the live dev server, not inferred: with
+		// the literal, `scripts/verify.ts` passes 9/9; with a non-literal, the
+		// design-system mount check times out.
+		//
+		// TypeScript's own opinion about this specifier is handled separately, in
+		// tsconfig.json's `paths` — see the comment there for why.
 		import("@wonderful/ui/components"),
 	]);
 

@@ -12,7 +12,13 @@
 		"skipLibCheck": true,
 		"types": ["node", "vite/client"],
 		"resolveJsonModule": true,
-		"allowImportingTsExtensions": true
+		"allowImportingTsExtensions": true,
+		"paths": {
+			// TYPE resolution only — Vite has no tsconfig-paths plugin installed,
+			// so its own (real, required) resolution of this same specifier is
+			// unaffected. See the stub file's own doc comment for the full reason.
+			"@wonderful/ui/components": ["./src/types/wonderfulUiComponentsStub.ts"]
+		}
 	},
 	"include": ["src", "scripts", "vite.config.ts"]
 }
