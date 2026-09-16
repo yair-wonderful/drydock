@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { registerAgentRoutes } from "./agent/routes.ts";
 import { getSql } from "./db/connect.ts";
 import { migrate } from "./db/migrate.ts";
 import { applyCorsHeaders } from "./http/cors.ts";
@@ -22,6 +23,7 @@ const main = async (): Promise<void> => {
 
 	const router = new Router();
 	registerPrototypeRoutes(router, sql);
+	registerAgentRoutes(router);
 	// Every route runs through `withRoute`, `/healthz` included — a bare route
 	// handler's return value is not itself a response; `Router.handle` ignores
 	// it, so without this wrapper the request never gets a reply and hangs.

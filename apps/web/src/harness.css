@@ -108,3 +108,33 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 11px;
 .save-status { font-size: 12px; align-self: center; }
 .save-status-ok { color: var(--success); }
 .save-status-error { color: var(--danger); }
+
+/* Overrides `.editor textarea` above for the agent's own (much shorter)
+   prompt/instruction fields — declared after it so equal-specificity source
+   order resolves in this rule's favor, rather than inheriting the code
+   editor's 440px min-height. */
+.agent-row { display: flex; gap: 6px; align-items: flex-start; }
+.agent-row textarea {
+	flex: 1;
+	min-height: auto;
+	resize: vertical;
+	font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 6px 8px;
+	background: var(--background-secondary);
+	color: var(--foreground);
+}
+.agent-row button {
+	align-self: flex-start;
+	font: inherit;
+	padding: 3px 9px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--background);
+	color: var(--foreground);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.agent-row button:disabled { opacity: 0.5; cursor: wait; }
+.agent-error { color: var(--danger); margin: 0; }

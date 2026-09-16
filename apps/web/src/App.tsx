@@ -1,4 +1,5 @@
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AgentPanel from "./components/AgentPanel";
 import FileEditor from "./components/FileEditor";
 import PrototypeStage, { type ViewportName } from "./components/PrototypeStage";
 import ReportPanel from "./components/ReportPanel";
@@ -52,6 +53,14 @@ export default function App() {
 
 	const handleChangeFile = useCallback((file: string, contents: string) => {
 		setTree((current) => ({ ...current, [file]: contents }));
+	}, []);
+
+	// Replaces the WHOLE tree, from either a fresh generation or a rewrite —
+	// same active-file convention as hydrating a persisted prototype above:
+	// land on the harness's own entry point when the new tree has one.
+	const handleApplyGeneratedTree = useCallback((generated: PrototypeTree) => {
+		setTree(generated);
+		setActiveFile(HARNESS_ENTRY_POINT in generated ? HARNESS_ENTRY_POINT : Object.keys(generated)[0]);
 	}, []);
 
 	// Depending on the specific functions rather than `persistence` itself: the
@@ -183,13 +192,15 @@ export default function App() {
 				</div>
 			</header>
 
-			<FileEditor
-				className="pane editor"
-				tree={tree}
-				activeFile={activeFile}
-				onSelectFile={setActiveFile}
-				onChangeFile={handleChangeFile}
-			/>
+			<div className="pane editor">
+				<AgentPanel tree={tree} onApplyTree={handleApplyGeneratedTree} />
+				<FileEditor
+					tree={tree}
+					activeFile={activeFile}
+					onSelectFile={setActiveFile}
+					onChangeFile={handleChangeFile}
+				/>
+			</div>
 
 			<PrototypeStage
 				ref={mountRef}

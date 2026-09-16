@@ -12,6 +12,7 @@
 	},
 	"dependencies": {
 		"@drydock/prototype": "workspace:*",
+		"openai": "^4.104.0",
 		"postgres": "^3.4.5"
 	},
 	"devDependencies": {
