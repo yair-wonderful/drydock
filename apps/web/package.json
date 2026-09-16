@@ -11,6 +11,7 @@
 		"typecheck": "tsc --noEmit",
 		"test": "node --test src/**/*.test.ts",
 		"verify": "node scripts/verify.ts",
+		"verify:agent-loop": "node scripts/verify-agent-loop.ts",
 		"verify:anchoring": "node scripts/verify-anchoring.ts",
 		"verify:persistence": "node scripts/verify-persistence.ts"
 	},

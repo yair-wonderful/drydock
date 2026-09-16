@@ -106,8 +106,11 @@ exists (`apps/server`, verified end-to-end through a real browser against
 Postgres — 8 checks) and is wired into the Blackbird join (`apps/web/blackbird-join`
 — compile, comments, multiplayer sync, and loading a real persisted prototype
 by id are each independently verified, 4-6 checks apiece). The agent loop
-(generate from a prompt, rewrite per an instruction) exists and is held to
-Wonderful Design Guardrails v0 (see `docs/wonderful-design-guardrails.md`) —
-typechecked and unit-tested, but not yet verified against a live model call
-in this environment; `apps/server/scripts/goldenPrompt.ts` is the intended
-before/after check once a real `OPENAI_API_KEY` is available.
+(`/api/agent/generate`, `/api/agent/rewrite` — generate from a prompt,
+rewrite per an instruction) is built and held to Wonderful Design
+Guardrails v0 (see `docs/wonderful-design-guardrails.md`) — see
+`docs/local-dev-handoff.md` for how to run it locally and
+`docs/harbor-research-and-plan.md` for the research and phased plan behind
+the whole project. `apps/server/scripts/goldenPrompt.ts` and
+`apps/web/scripts/verify-agent-loop.ts` are the intended before/after and
+end-to-end checks once a real `OPENAI_API_KEY` is available.
