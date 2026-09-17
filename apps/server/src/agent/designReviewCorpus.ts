@@ -1,16 +1,16 @@
 /**
  * What a Wonderful design reviewer actually rejects.
  *
- * Source: a Figma review file (`DS-examples-review`) holding four paired
+ * Source: a design review file holding four paired
  * columns — a reference frame the design team considers good on top, the
  * same screen as it ships in production below — annotated with 31 comment
- * pins by Danny, carrying 34 individual remarks (a few pins hold more than
+ * review pins, carrying 34 individual remarks (a few pins hold more than
  * one; the segmented control alone drew three). Each remark is stored
  * separately because they land in different clusters.
  *
  * Transcribed verbatim here, because the pins are the only
  * labelled record this project has of the judgment the guardrails are
- * trying to encode, and a Figma comment thread is not a dependency an
+ * trying to encode, and a design comment thread is not a dependency an
  * agent loop can read at generation time.
  *
  * TWO FINDINGS THIS CORPUS FORCED, both of which changed the design of the
@@ -49,7 +49,7 @@ export type DesignDefectCluster =
 export type DesignReviewFinding = {
 	/** Stable id, so a later pass can reference one finding without quoting it. */
 	id: string;
-	/** The Figma frame the pin sits on. */
+	/** The review frame the pin sits on. */
 	frame: string;
 	/** True when pinned on a reference ("good") frame rather than production. */
 	isReference: boolean;

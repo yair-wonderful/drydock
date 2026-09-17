@@ -31,15 +31,14 @@
  *
  * TWO UNRESOLVED QUESTIONS ABOUT THE SOURCE, flagged rather than guessed:
  *
- * 1. The document cites principles P1, P2, P3, P5 and P10 as its
- *    foundation, but the document defining P1-P10 was not supplied. Every
+ * 1. The document cites foundational principles as its source, but the
+ *    document defining those principles was not supplied. Every
  *    rule below is the *applied* layer; the layer it is applied FROM is
  *    still missing from this repo.
- * 2. The document names the design system `better-layout` / `better-ui`.
- *    Drydock targets `@wonderful/ui` (vendored from the monorepo) and
- *    `@wonderful/ui-base` (its published next-major). Whether those are
- *    the same system under an older name is not established here, so no
- *    rule below depends on a `better-*` API existing.
+ * 2. The document uses source package names outside the Drydock target set. Drydock targets
+ *    `@wonderful/ui` (vendored from the monorepo) and `@wonderful/ui-base`
+ *    (its published next-major), so no rule below depends on an API outside
+ *    those packages.
  */
 
 export const AGENTIC_UX_PROMPT = `## Designing for a user who manages agents, not one who operates software

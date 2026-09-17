@@ -13,7 +13,7 @@
  * Run: node scripts/exportGuardrails.ts [outDir]
  */
 
-import { mkdirSync, writeFileSync, copyFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, copyFileSync, existsSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,9 +27,11 @@ import { DESIGN_GUARDRAILS_PROMPT, GUARDRAIL_CATALOGUE } from "../apps/server/sr
 import { DESIGN_REVIEW_CORPUS, getClusterCounts } from "../apps/server/src/agent/designReviewCorpus.ts";
 import { SYSTEM_PROMPT } from "../apps/server/src/agent/systemPrompt.ts";
 import { UX_FOUNDATIONS_PROMPT } from "../apps/server/src/agent/uxFoundations.ts";
+import { UX_REVIEW_DISCIPLINE, UX_REVIEW_DISCIPLINE_PROMPT } from "../apps/server/src/agent/uxReviewDiscipline.ts";
 import { VISUAL_DESIGN_PROMPT } from "../apps/server/src/agent/visualDesignPrinciples.ts";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const DEFAULT_OUT_DIR = resolve(REPO_ROOT, "dist", "wonderful-design-guardrails");
 
 const writeFile = (outDir: string, relativePath: string, contents: string): void => {
 	const target = join(outDir, relativePath);
@@ -106,9 +108,11 @@ Two consequences, and they should shape whatever you build:
 | \`prompt/system-prompt.md\` | The full assembled generation prompt, ready to use |
 | \`prompt/sections/\` | The same prompt split into its layers, to recombine |
 | \`reference/hard-gates.md\` | Every gate, what it checks, why it blocks, what was verified first |
+| \`reference/ux-review-discipline.md\` | The stripped, Wonderful-only review discipline distilled from uploaded UX review skills |
 | \`reference/review-corpus.md\` | The 34 real review remarks, grouped by cluster |
 | \`reference/rationale.md\` | The full design document, including every unresolved conflict |
 | \`data/hard-gates.json\` | The gates as data, for re-implementation |
+| \`data/ux-review-discipline.json\` | The review discipline as data, for re-implementation |
 | \`data/review-corpus.json\` | The corpus as data, for use as an eval set |
 | \`data/critique-dimensions.json\` | The 21 critique dimensions |
 
@@ -122,7 +126,8 @@ before failing hard.
 
 **Reviewing screens:** use the critique dimensions and the corpus. The
 corpus is the closest thing to a labelled dataset of what Wonderful
-rejects.
+rejects. Use \`reference/ux-review-discipline.md\` for the broader review
+moves that should stay advisory rather than becoming hard gates.
 
 **Read \`reference/rationale.md\` before changing anything here.** It
 records which rules were rejected and why, including rules from internal
@@ -195,6 +200,28 @@ that is what makes honest self-reporting possible.
 `;
 };
 
+const getUxReviewDisciplineDoc = (): string => {
+	const sections = UX_REVIEW_DISCIPLINE.map((area) => {
+		const checks = area.checks.map((check) => `- ${check}`).join("\n");
+		return `### ${area.name}\n\n${checks}`;
+	}).join("\n\n");
+
+	return `# UX review discipline
+
+This is the stripped, Wonderful-only material distilled from uploaded UX
+review skills. The source skills contained source-process instructions and
+non-Wonderful product context that do not belong in Drydock. What remains
+here is the reusable review method.
+
+These checks are **advisory, not blocking**. They should influence the
+generation prompt, the design self-review, and human review. They should not
+be promoted to hard gates unless a future item becomes both mechanically
+checkable and repeatedly non-negotiable in Wonderful review evidence.
+
+${sections}
+`;
+};
+
 const getCorpusDoc = (): string => {
 	const counts = getClusterCounts();
 	const ranked = Object.entries(counts).sort(([, a], [, b]) => b - a);
@@ -214,7 +241,7 @@ const getCorpusDoc = (): string => {
 	return `# The review corpus
 
 31 comment pins carrying 34 remarks, left by a Wonderful designer on four
-real screens in a Figma review file. Each screen appears twice: a
+real screens in a design review file. Each screen appears twice: a
 reference frame the design team considers good, and the same screen as it
 ships in production.
 
@@ -250,11 +277,15 @@ ${sections}
 };
 
 const main = (): void => {
-	const outDir = resolve(process.argv[2] ?? join(REPO_ROOT, "dist", "wonderful-design-guardrails"));
+	const outDir = resolve(process.argv[2] ?? DEFAULT_OUT_DIR);
+	if (outDir === DEFAULT_OUT_DIR) {
+		rmSync(outDir, { recursive: true, force: true });
+	}
 	mkdirSync(outDir, { recursive: true });
 
 	writeFile(outDir, "SKILL.md", getSkillEntryPoint());
 	writeFile(outDir, "reference/hard-gates.md", getHardGatesDoc());
+	writeFile(outDir, "reference/ux-review-discipline.md", getUxReviewDisciplineDoc());
 	writeFile(outDir, "reference/review-corpus.md", getCorpusDoc());
 
 	writeFile(outDir, "prompt/system-prompt.md", SYSTEM_PROMPT);
@@ -262,9 +293,11 @@ const main = (): void => {
 	writeFile(outDir, "prompt/sections/02-ux-foundations.md", UX_FOUNDATIONS_PROMPT);
 	writeFile(outDir, "prompt/sections/03-visual-canon.md", VISUAL_DESIGN_PROMPT);
 	writeFile(outDir, "prompt/sections/04-gates-and-rubric.md", DESIGN_GUARDRAILS_PROMPT);
-	writeFile(outDir, "prompt/sections/05-critique.md", CRITIQUE_PROMPT);
+	writeFile(outDir, "prompt/sections/05-ux-review-discipline.md", UX_REVIEW_DISCIPLINE_PROMPT);
+	writeFile(outDir, "prompt/sections/06-critique.md", CRITIQUE_PROMPT);
 
 	writeFile(outDir, "data/hard-gates.json", JSON.stringify(GUARDRAIL_CATALOGUE, null, 2));
+	writeFile(outDir, "data/ux-review-discipline.json", JSON.stringify(UX_REVIEW_DISCIPLINE, null, 2));
 	writeFile(
 		outDir,
 		"data/review-corpus.json",
@@ -299,6 +332,7 @@ const main = (): void => {
 	console.log(`Exported to ${outDir}`);
 	console.log(`  gates:               ${GUARDRAIL_CATALOGUE.length}`);
 	console.log(`  corpus remarks:      ${DESIGN_REVIEW_CORPUS.length}`);
+	console.log(`  review areas:        ${UX_REVIEW_DISCIPLINE.length}`);
 	console.log(`  critique dimensions: ${ALL_CRITIQUE_DIMENSIONS.length}`);
 	console.log(`  system prompt:       ${SYSTEM_PROMPT.length} chars (~${Math.round(SYSTEM_PROMPT.length / 4)} tokens)`);
 };

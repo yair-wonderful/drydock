@@ -19,6 +19,7 @@ import { CRITIQUE_PROMPT } from "./designCritique.ts";
 import { DESIGN_GUARDRAILS_PROMPT } from "./designGuardrails.ts";
 import { getReviewerVoicePrompt } from "./designReviewCorpus.ts";
 import { UX_FOUNDATIONS_PROMPT } from "./uxFoundations.ts";
+import { UX_REVIEW_DISCIPLINE_PROMPT } from "./uxReviewDiscipline.ts";
 import { VISUAL_DESIGN_PROMPT } from "./visualDesignPrinciples.ts";
 
 const ENTRY_POINT_EXAMPLE = `import Dashboard from "./Dashboard";
@@ -163,6 +164,8 @@ ${UX_FOUNDATIONS_PROMPT}
 ${VISUAL_DESIGN_PROMPT}
 
 ${DESIGN_GUARDRAILS_PROMPT}
+
+${UX_REVIEW_DISCIPLINE_PROMPT}
 
 ${CRITIQUE_PROMPT}
 

@@ -8,8 +8,8 @@ build. That second half is the whole reason this document exists: a
 prototype that only needs to *look* plausible is a much lower bar than one
 that needs to survive becoming production code.
 
-The Stripe/Harbor lesson this encodes: a model that merely "uses the real
-component library" produces something that compiles but doesn't
+The AI-prototyping lesson this encodes: a model that merely "uses the real
+component library" produces something that compiles but does not
 necessarily read as *your* product. It only becomes genuinely useful once
 the organization's own standards — not just its components — are encoded
 into the tool. This document is that encoding for Wonderful.
@@ -164,18 +164,17 @@ was used, since it's a strict superset. That source file should still get
 its conflict resolved for real.
 
 **Two unknowns in the agentic-UX document**, flagged rather than guessed:
-its foundational principles P1–P10 are cited but the document defining them
+its foundational principles are cited but the source document defining them
 was never supplied, so only the applied layer is encoded here; and it names
-the design system `better-layout` / `better-ui` where Drydock targets
-`@wonderful/ui` / `@wonderful/ui-base`, so no rule depends on a `better-*`
-API existing.
+source package names outside the Drydock target set, so no rule depends on an API outside
+`@wonderful/ui` / `@wonderful/ui-base`.
 
 ## The review corpus, and what it changed
 
 The rubric below is not derived from first principles. It is derived from
 `apps/server/src/agent/designReviewCorpus.ts` — a verbatim transcription of
 31 comment pins (34 individual remarks) that a Wonderful designer left on
-four real Wonderful screens in the `DS-examples-review` Figma file, where
+four real Wonderful screens in a design review file, where
 each screen appears twice: a reference frame the design team considers
 good, and the same screen as it ships in production.
 
@@ -262,10 +261,10 @@ Plus:
   having **no corpus support**: the corpus is static screenshots of one
   state each, so its silence here is a sampling artifact, not evidence that
   state coverage doesn't matter.
-- **`selfFlagged`** (list) — the comments the model expects a Wonderful
-  reviewer to leave on this screen, short and in their voice. The most
-  useful field in the rubric: it turns the model's uncertainty into the
-  reviewer's agenda instead of hiding it behind a rating.
+- **`critique`** (list) — the findings the model expects a Wonderful
+  reviewer to inspect first, each in Observation → Problem → Fix form. The
+  most useful field in the rubric: it turns the model's uncertainty into
+  the reviewer's agenda instead of hiding it behind a rating.
 
 ## The critique instrument
 
@@ -302,6 +301,27 @@ would have no critique dimension.
 Drydock answers mechanically at compile time, so it stays a rubric axis
 rather than a critique prompt.
 
+
+## What the uploaded UX review skills changed
+
+The uploaded UX review files are useful as a review method, not as source
+content to copy. The parts that landed are stripped of source-tool instructions,
+non-Wonderful product context, non-target package names, and source-specific
+routing. What remains is a compact advisory layer in
+`apps/server/src/agent/uxReviewDiscipline.ts`.
+
+That layer asks the model and reviewer to check seven things before handing
+a prototype over: flow/state completeness, wayfinding, interaction-risk
+calibration, system visibility, permissions and recovery, Wonderful domain
+fit, and output quality. It improves the self-review artifact without
+turning subjective UX judgment into a hard gate.
+
+The rule for future promotion stays unchanged: a review-discipline item can
+become a gate only if it is mechanically checkable and repeatedly
+non-negotiable in Wonderful review evidence. Until then it remains a rubric
+or an open question, because a wrong gate would recreate the design
+bottleneck inside the tool.
+
 ## Where the general skill library did and didn't land
 
 Twenty-one general design skills were supplied. Most of their content is
@@ -313,7 +333,7 @@ enough to act on while writing a component, not already covered, and
 relevant to an internal Wonderful platform screen.
 
 Three of those rules earn their place by being independently corroborated
-by the corpus — the library and Danny arrived at the same finding from
+by the corpus — the library and the reviewer arrived at the same finding from
 different directions:
 
 | Skill rule | Corpus pin |
@@ -360,14 +380,15 @@ and the corpus is the evidence for it.
 question.** `design-principles` (how to author principles) and
 `design-qa-checklist` (how to author QA checklists) describe processes for
 humans. `design-principles` is, however, exactly the right tool for the gap
-flagged below: the agentic-UX document cites principles P1–P10 that have
-never been supplied to this repo.
+flagged below: the agentic-UX document cites foundational principles that
+have never been supplied to this repo.
 
-**Prompt cost.** The system prompt is now ~5,800 tokens, up from ~1,000 for
-the rules and example alone. That is the thing the corpus warned about —
-more general rules diluting the Wonderful-specific signal. It is not yet
-measured, and `apps/server/scripts/goldenPrompt.ts` is the instrument for
-measuring it once a real key exists.
+**Prompt cost.** The system prompt is now substantially longer than the
+original rules-and-example prompt. That is the thing the corpus warned
+about — more general rules can dilute the Wonderful-specific signal. The
+export script reports the current approximate token count, and
+`apps/server/scripts/goldenPrompt.ts` is the instrument for measuring the
+quality tradeoff once a real key exists.
 
 ## What's not in v0
 
@@ -377,10 +398,10 @@ measuring it once a real key exists.
   independent pass against the corpus and produces a number, which is what
   would finally answer "is Drydock's output better than what we ship
   today". The instrument is built; the scoring harness is not.
-- **P1–P10 are still missing.** The agentic-UX document is the *applied*
-  layer of a set of principles cited as P1, P2, P3, P5 and P10. The
-  document defining them has never been supplied, so what's encoded here
-  rests on foundations this repo cannot see.
+- **The underlying agentic principles are still missing.** The agentic-UX
+  document is the *applied* layer of a broader principle set. The document
+  defining that set has never been supplied, so what is encoded here rests
+  on foundations this repo cannot see.
 - Whether the model's self-rating is *accurate* is not itself checked.
   These are self-reports, not verified facts — see the note on
   `DesignReview` in `packages/prototype/src/types.ts`.
@@ -390,7 +411,7 @@ measuring it once a real key exists.
   wrapping an input across multiple lines, for instance), because a gate
   that blocks should err toward missing a real violation rather than
   rejecting valid work.
-- No mechanism yet aggregates `knownGaps`, `selfFlagged`, or weak ratings
+- No mechanism yet aggregates `knownGaps`, `rubric.critique`, or weak ratings
   across generations to surface promotion candidates for the gate layer.
   Per Finding 1 this is now lower priority than it looked: the corpus
   suggests the next real win is in the prompt, not the gates.
