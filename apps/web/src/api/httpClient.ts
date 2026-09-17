@@ -10,7 +10,9 @@ const getApiBaseUrl = (): string => {
 	// import.meta.env.VITE_* is Vite's compile-time env convention. Defaulting
 	// to the server's own default port means a developer running both with no
 	// config gets a working app; anything else has to be configured on purpose.
-	const configured = import.meta.env.VITE_DRYDOCK_API_URL as string | undefined;
+	// The optional access keeps this file importable from Node unit tests too.
+	const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+	const configured = viteEnv?.VITE_DRYDOCK_API_URL;
 	return configured?.trim() || "http://127.0.0.1:5299";
 };
 
@@ -41,14 +43,33 @@ type RequestOptions = {
  * data — the mistake `fetch`'s own contract makes easy.
  */
 export const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
-	const response = await fetch(`${getApiBaseUrl()}${path}`, {
-		method: options.method ?? "GET",
-		headers: options.body === undefined ? {} : { "content-type": "application/json" },
-		body: options.body === undefined ? undefined : JSON.stringify(options.body),
-	});
+	const apiBaseUrl = getApiBaseUrl();
+	let response: Response;
+	try {
+		response = await fetch(`${apiBaseUrl}${path}`, {
+			method: options.method ?? "GET",
+			headers: options.body === undefined ? {} : { "content-type": "application/json" },
+			body: options.body === undefined ? undefined : JSON.stringify(options.body),
+		});
+	} catch {
+		throw new ApiError(
+			0,
+			"api_unreachable",
+			`Drydock API is not reachable at ${apiBaseUrl}. Start Drydock with \`pnpm run dev\` instead of the web-only server.`,
+		);
+	}
 
 	const text = await response.text();
-	const parsed = text === "" ? undefined : (JSON.parse(text) as unknown);
+	let parsed: unknown;
+	try {
+		parsed = text === "" ? undefined : (JSON.parse(text) as unknown);
+	} catch {
+		throw new ApiError(
+			response.status,
+			"invalid_api_response",
+			"Drydock API returned an unreadable response. Check the API line in the dev terminal.",
+		);
+	}
 
 	if (!response.ok) {
 		const errorBody = (parsed as { error?: { code?: string; message?: string; detail?: unknown } } | undefined)

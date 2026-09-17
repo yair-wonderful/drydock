@@ -15,6 +15,16 @@ export interface AgentPanelProps {
 
 type AgentStatus = { state: "idle" } | { state: "running" } | { state: "error"; message: string };
 
+const getAgentErrorMessage = (error: unknown, fallback: string): string => {
+	if (error instanceof ApiError) {
+		return error.message;
+	}
+	if (error instanceof Error && error.message) {
+		return `${fallback}: ${error.message}`;
+	}
+	return fallback;
+};
+
 /**
  * The agent loop, as a control: describe a prototype and get one, or
  * describe a change and get the CURRENT tree rewritten. Generation and
@@ -47,7 +57,7 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 			setReview(result.review);
 			setStatus({ state: "idle" });
 		} catch (error) {
-			setStatus({ state: "error", message: error instanceof ApiError ? error.message : "generation failed" });
+			setStatus({ state: "error", message: getAgentErrorMessage(error, "generation failed") });
 		}
 	}, [prompt, onApplyTree]);
 
@@ -63,7 +73,7 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 			setStatus({ state: "idle" });
 			setInstruction("");
 		} catch (error) {
-			setStatus({ state: "error", message: error instanceof ApiError ? error.message : "rewrite failed" });
+			setStatus({ state: "error", message: getAgentErrorMessage(error, "rewrite failed") });
 		}
 	}, [instruction, tree, onApplyTree]);
 

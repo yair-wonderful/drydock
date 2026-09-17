@@ -29,6 +29,12 @@ const getDesignSystemRoot = (): string => {
 const UI_ROOT = getDesignSystemRoot();
 
 export default defineConfig({
+	define: {
+		// Babel's small AST helper package checks this compile-time flag at module
+		// load. In the browser there is no Node `process`, so make the intended
+		// Babel 7 behavior explicit rather than relying on a polyfill.
+		"process.env.BABEL_TYPES_8_BREAKING": "false",
+	},
 	plugins: [react(), tailwindcss()],
 	resolve: {
 		alias: [

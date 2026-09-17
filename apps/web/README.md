@@ -14,9 +14,9 @@ runtime failures". This spike implements that contract against our design
 system, to find out what it costs us.
 
 ```bash
-pnpm install --ignore-workspace
-pnpm run dev      # http://127.0.0.1:5199
-pnpm run verify   # drives the page in Chromium and asserts the 5 claims
+pnpm run setup:local
+pnpm run dev      # starts the web app, API, and local model adapter
+pnpm run verify   # drives the page in Chromium and asserts the core claims
 ```
 
 ## Why the cost is low for us specifically
