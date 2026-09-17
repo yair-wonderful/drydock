@@ -1,4 +1,6 @@
-import * as Babel from "@babel/standalone";
+import { generate } from "@babel/generator";
+import { parse } from "@babel/parser";
+import * as t from "@babel/types";
 import type { PrototypeTree, WfSourceMap } from "./types";
 
 /**
@@ -7,24 +9,38 @@ import type { PrototypeTree, WfSourceMap } from "./types";
  * The in-repo plugin is already a STANDALONE `enforce: "pre"` transform: it
  * parses TSX and emits TSX, running no JSX/TS lowering of its own (that stays
  * with the bundler downstream). That decoupling is why it moves here at all —
- * Babel runs first, esbuild lowers afterwards, exactly as Vite does it.
+ * the anchor pass runs first, esbuild lowers afterwards, exactly as Vite does it.
  *
- * Only three things had to change, and all three are Node built-ins with direct
- * browser equivalents:
+ * This file intentionally uses Babel's small parser/generator packages instead
+ * of the old all-in-one browser bundle. That bundle contains every Babel preset
+ * and plugin, which made low-memory installs fail before the web app was even
+ * linked. Drydock only needs TSX parsing, one AST edit, and TSX printing.
+ *
+ * Only three things had to change from the Node plugin, and all three are Node
+ * built-ins with direct browser equivalents:
  *   - `crypto.randomBytes`  → `crypto.getRandomValues`
  *   - `crypto.createHash`   → a small synchronous hash (WebCrypto's digest is
- *                             async, and a Babel visitor cannot await)
+ *                             async, and an AST visitor cannot await)
  *   - `path` + `process.cwd()` → nothing: a virtual tree's paths are already
  *                                relative to their own root.
  *
  * Everything else — the visitor, the opaque id, the loop/iterable flags, the
- * zero-DOM-footprint spread — is the original logic.
+ * zero-DOM-footprint spread — mirrors the original logic.
  */
 
 const ANCHORS_GLOBAL = "__WF_ANCHORS__";
 
-// biome-ignore lint/suspicious/noExplicitAny: Babel nodes are untyped here.
+// biome-ignore lint/suspicious/noExplicitAny: Babel AST nodes are intentionally handled generically here.
 type Any = any;
+
+interface VisitContext {
+	file: string;
+	sourceMap: WfSourceMap;
+	/** Name of the nearest function parent, matching Babel path.getFunctionParent(). */
+	componentName: string;
+	/** Iterable name when the nearest function parent is directly passed to `.map(...)`. */
+	mapIterable: string | null;
+}
 
 /**
  * A FIXED namespace, where the in-repo Node plugin uses `crypto.randomBytes`
@@ -61,37 +77,30 @@ function getOpaqueId(input: string): string {
 }
 
 function getAnchorableName(name: Any): string | null {
-	if (name?.type !== "JSXIdentifier") {
+	if (!t.isJSXIdentifier(name)) {
 		return null;
 	}
 	return name.name === "Fragment" ? null : name.name;
 }
 
-function getEnclosingComponentName(jsxPath: Any): string {
-	const fn = jsxPath.getFunctionParent();
-	if (!fn) {
-		return "";
+function getFunctionName(node: Any, parent: Any | null): string {
+	if (node.id?.type === "Identifier") {
+		return node.id.name;
 	}
-	if (fn.node.id?.name) {
-		return fn.node.id.name;
-	}
-	const parent = fn.parentPath?.node;
-	if (parent?.type === "VariableDeclarator" && parent.id?.type === "Identifier") {
+	if (parent?.type === "VariableDeclarator" && parent.init === node && parent.id?.type === "Identifier") {
 		return parent.id.name;
 	}
-	if (parent?.type === "AssignmentExpression" && parent.left?.type === "Identifier") {
+	if (parent?.type === "AssignmentExpression" && parent.right === node && parent.left?.type === "Identifier") {
 		return parent.left.name;
 	}
 	return "";
 }
 
-function getMapIterable(jsxPath: Any): string | null {
-	const fn = jsxPath.getFunctionParent();
-	const call = fn?.parentPath;
-	if (!call?.isCallExpression?.()) {
+function getMapIterableFromFunctionParent(parent: Any | null): string | null {
+	if (parent?.type !== "CallExpression") {
 		return null;
 	}
-	const callee = call.node.callee;
+	const callee = parent.callee;
 	if (
 		callee?.type !== "MemberExpression" ||
 		callee.property?.type !== "Identifier" ||
@@ -109,49 +118,115 @@ function getMapIterable(jsxPath: Any): string | null {
 	return "";
 }
 
-function createAnchorPlugin(salt: string, map: WfSourceMap) {
-	return ({ types: t }: Any): Any => ({
-		name: "wonderful-source-anchor",
-		visitor: {
-			JSXOpeningElement(path: Any, state: Any) {
-				const name = getAnchorableName(path.node.name);
-				if (!name) {
-					return;
-				}
-				const loc = path.node.loc;
-				if (!loc) {
-					return;
-				}
-				const file: string = state.filename ?? "unknown";
-				const { line, column } = loc.start;
-				const id = getOpaqueId(`${salt}:${file}:${line}:${column}`);
+function isFunctionLike(node: Any): boolean {
+	return (
+		node.type === "FunctionDeclaration" ||
+		node.type === "FunctionExpression" ||
+		node.type === "ArrowFunctionExpression" ||
+		node.type === "ObjectMethod" ||
+		node.type === "ClassMethod" ||
+		node.type === "ClassPrivateMethod"
+	);
+}
 
-				const iterable = getMapIterable(path);
-				map[id] = {
-					name,
-					component: getEnclosingComponentName(path) || undefined,
-					loop: iterable === null ? undefined : true,
-					iterable: iterable || undefined,
-					file,
-					line,
-				};
+function isNode(value: unknown): value is Any {
+	return !!value && typeof value === "object" && typeof (value as { type?: unknown }).type === "string";
+}
 
-				// `<El {...(globalThis.__WF_ANCHORS__?.["<id>"])} />`
-				// In production the global is never set, so the spread is
-				// `{...undefined}` — a no-op that leaves the DOM completely clean.
-				path.node.attributes.push(
-					t.jsxSpreadAttribute(
-						t.optionalMemberExpression(
-							t.memberExpression(t.identifier("globalThis"), t.identifier(ANCHORS_GLOBAL)),
-							t.stringLiteral(id),
-							true,
-							true,
-						),
-					),
-				);
-			},
-		},
+const SKIPPED_CHILD_KEYS = new Set([
+	"comments",
+	"errors",
+	"extra",
+	"innerComments",
+	"leadingComments",
+	"loc",
+	"range",
+	"start",
+	"end",
+	"tokens",
+	"trailingComments",
+]);
+
+function visitChildren(node: Any, context: VisitContext): void {
+	for (const [key, value] of Object.entries(node)) {
+		if (SKIPPED_CHILD_KEYS.has(key)) {
+			continue;
+		}
+		if (Array.isArray(value)) {
+			for (const child of value) {
+				if (isNode(child)) {
+					visitNode(child, node, context);
+				}
+			}
+			continue;
+		}
+		if (isNode(value)) {
+			visitNode(value, node, context);
+		}
+	}
+}
+
+function addAnchorAttribute(path: Any, context: VisitContext): void {
+	const name = getAnchorableName(path.name);
+	if (!name) {
+		return;
+	}
+	const loc = path.loc;
+	if (!loc) {
+		return;
+	}
+	const { line, column } = loc.start;
+	const id = getOpaqueId(`${ID_NAMESPACE}:${context.file}:${line}:${column}`);
+
+	context.sourceMap[id] = {
+		name,
+		component: context.componentName || undefined,
+		loop: context.mapIterable === null ? undefined : true,
+		iterable: context.mapIterable || undefined,
+		file: context.file,
+		line,
+	};
+
+	// `<El {...(globalThis.__WF_ANCHORS__?.["<id>"])} />`
+	// In production the global is never set, so the spread is `{...undefined}` —
+	// a no-op that leaves the DOM completely clean.
+	path.attributes.push(
+		t.jsxSpreadAttribute(
+			t.optionalMemberExpression(
+				t.memberExpression(t.identifier("globalThis"), t.identifier(ANCHORS_GLOBAL)),
+				t.stringLiteral(id),
+				true,
+				true,
+			),
+		),
+	);
+}
+
+function visitNode(node: Any, parent: Any | null, context: VisitContext): void {
+	if (isFunctionLike(node)) {
+		visitChildren(node, {
+			...context,
+			componentName: getFunctionName(node, parent),
+			mapIterable: getMapIterableFromFunctionParent(parent),
+		});
+		return;
+	}
+
+	if (node.type === "JSXOpeningElement") {
+		addAnchorAttribute(node, context);
+	}
+	visitChildren(node, context);
+}
+
+function transformFile(file: string, source: string, sourceMap: WfSourceMap): string {
+	const ast = parse(source, {
+		sourceFilename: file,
+		sourceType: "module",
+		plugins: ["jsx", "typescript"],
 	});
+
+	visitNode(ast, null, { file, sourceMap, componentName: "", mapIterable: null });
+	return generate(ast, { comments: true, retainLines: true }, source).code;
 }
 
 export interface AnchorResult {
@@ -161,9 +236,7 @@ export interface AnchorResult {
 
 /** Runs the anchor pass over every `.tsx`/`.jsx` file, leaving the rest alone. */
 export default function transformAnchors(tree: PrototypeTree): AnchorResult {
-	const salt = ID_NAMESPACE;
 	const sourceMap: WfSourceMap = {};
-	const plugin = createAnchorPlugin(salt, sourceMap);
 	const out: PrototypeTree = {};
 
 	for (const [file, source] of Object.entries(tree)) {
@@ -171,16 +244,7 @@ export default function transformAnchors(tree: PrototypeTree): AnchorResult {
 			out[file] = source;
 			continue;
 		}
-		const result = Babel.transform(source, {
-			filename: file,
-			babelrc: false,
-			configFile: false,
-			// Parse TS + JSX but run NO transform preset, so the output keeps its
-			// JSX/TS syntax for esbuild to lower afterwards.
-			parserOpts: { plugins: ["jsx", "typescript"] },
-			plugins: [plugin],
-		});
-		out[file] = result.code ?? source;
+		out[file] = transformFile(file, source, sourceMap);
 	}
 
 	return { tree: out, sourceMap };

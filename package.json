@@ -11,12 +11,19 @@
 		"export:guardrails": "node scripts/exportGuardrails.ts",
 		"sync:design-system": "node scripts/fetchDesignSystem.ts",
 		"check:design-system": "node scripts/checkDesignSystemStaleness.ts",
+		"setup:local": "node scripts/setup-local.mjs",
+		"setup:sandbox": "node scripts/setup-local.mjs --sandbox",
 		"predev": "node scripts/checkDesignSystemStaleness.ts || true",
-		"dev": "pnpm --filter @drydock/web dev",
+		"dev": "node scripts/dev-local.mjs",
+		"dev:web": "pnpm --filter @drydock/web dev",
+		"dev:server": "pnpm --filter @drydock/server run dev",
+		"dev:adapter": "node scripts/wonderful-llm-adapter.mjs",
 		"llm:adapter": "node scripts/wonderful-llm-adapter.mjs",
 		"build": "pnpm --filter @drydock/web build",
 		"typecheck": "pnpm -r typecheck",
-		"verify": "pnpm --filter @drydock/web verify"
+		"typecheck:sandbox": "pnpm --filter @drydock/server typecheck && pnpm --filter @drydock/prototype typecheck && pnpm --filter @drydock/web typecheck",
+		"verify": "pnpm --filter @drydock/web verify",
+		"verify:agent-loop:local": "node scripts/dev-local.mjs --verify-agent-loop"
 	},
 	"packageManager": "pnpm@10.28.1"
 }

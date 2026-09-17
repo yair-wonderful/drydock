@@ -49,24 +49,63 @@ changed since the pinned commit and lists what landed if so; it also runs
 not the next time something looks subtly off. It needs a `GITHUB_TOKEN`/
 `GH_TOKEN` env var or an authenticated `gh` CLI to read the (private) monorepo;
 without one it says so rather than reporting a false "up to date". Finding it
-stale means: `pnpm run sync:design-system`, then `pnpm install`, then
+stale means: `pnpm run sync:design-system`, then `pnpm run setup:local`, then
 `pnpm run verify` to confirm nothing broke.
 
 ## Getting started
 
-```bash
-pnpm run sync:design-system          # fetch libs/ui + libs/theme (network)
-# or, with a monorepo checkout already on disk, skip the network:
-node scripts/fetchDesignSystem.ts --from ../wonderful
+The normal local path is now two commands: one setup, one long-running dev
+process. The dev process starts the web app, API server, and Wonderful-backed
+local model adapter in one terminal.
 
-pnpm install
-pnpm run dev                         # http://127.0.0.1:5199
+```bash
+pnpm run setup:local
+cp apps/server/.env.example apps/server/.env  # then set DATABASE_URL if needed
+pnpm run dev                                  # http://127.0.0.1:5199
 ```
+
+`setup:local` fetches the pinned design system only when `vendor/` is missing
+and installs the full workspace with low memory pressure for normal laptop
+development. If you already have a
+monorepo checkout and want to refresh the design system from disk, the manual
+path still works:
+
+```bash
+node scripts/fetchDesignSystem.ts --from ../wonderful
+pnpm run setup:local
+```
+
+Use `pnpm run dev:web` only when you deliberately want the old web-only server.
+For direct testing against another model endpoint instead of the local adapter,
+put those model settings in `apps/server/.env` and run:
+
+```bash
+pnpm run dev -- --no-adapter
+```
+
+For Wonderful sandbox validation, use the lighter install path instead of the
+full design-system dependency graph:
+
+```bash
+pnpm run setup:sandbox
+pnpm run typecheck:sandbox
+```
+
+This is intentionally for validation only. `pnpm run setup:local` remains the
+full laptop setup for running the live app against the real vendored design
+system.
 
 ## Verifying
 
-Both suites drive a real browser (Playwright) against a real dev server. Start
-`pnpm run dev` first, then:
+The browser suites drive a real browser (Playwright) against a real dev server.
+For the full agent-loop smoke test with no extra terminals, run this when the
+app is not already running:
+
+```bash
+pnpm run verify:agent-loop:local
+```
+
+For the browser-only checks, start `pnpm run dev` first, then:
 
 ```bash
 pnpm --filter @drydock/web verify            # 9 checks: compile, mount, tokens, utility rejection

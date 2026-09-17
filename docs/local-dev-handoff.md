@@ -58,18 +58,39 @@ dev setup.
 ## Running it
 
 ```bash
-# terminal 1
-pnpm run llm:adapter                    # http://127.0.0.1:5399/v1
-
-# terminal 2
-pnpm --filter @drydock/server run dev   # http://127.0.0.1:5299
-
-# terminal 3
-pnpm --filter @drydock/web run dev      # http://127.0.0.1:5199
-
-# terminal 4
-pnpm --filter @drydock/web run verify:agent-loop
+pnpm run setup:local                    # first run, or after dependency changes
+pnpm run dev                            # starts adapter + API + web in one terminal
 ```
+
+That opens the same three local services the manual flow used to start in
+separate terminals:
+
+- Wonderful-backed local model adapter: `http://127.0.0.1:5399/v1`
+- Drydock API: `http://127.0.0.1:5299`
+- Drydock web app: `http://127.0.0.1:5199`
+
+When the adapter is enabled, `pnpm run dev` also supplies the API's local model
+defaults automatically. For direct testing against another model endpoint, put
+those values in `apps/server/.env` and run `pnpm run dev -- --no-adapter`.
+
+For a one-command smoke test that starts those services, runs the agent-loop
+verification, and shuts them down afterwards, use:
+
+```bash
+pnpm run verify:agent-loop:local
+```
+
+In the Wonderful sandbox, do not run the full local install just to validate a
+code change. Use the lightweight validation lane instead:
+
+```bash
+pnpm run setup:sandbox
+pnpm run typecheck:sandbox
+```
+
+That installs only the app packages TypeScript needs here and avoids the full
+vendored design-system dependency graph, which is too large for the sandbox
+memory cap.
 
 Then in the browser at `http://127.0.0.1:5199`:
 
