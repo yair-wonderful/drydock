@@ -1,4 +1,4 @@
-import { validateFileTree, type DesignReview, type ValidatedTree } from "@drydock/prototype";
+import { validateFileTree, type CritiqueFinding, type DesignReview, type ValidatedTree } from "@drydock/prototype";
 import type OpenAI from "openai";
 import { checkDesignGuardrails, getGuardrailViolationSummary } from "./designGuardrails.ts";
 import { HttpError } from "../http/errors.ts";
@@ -8,6 +8,30 @@ export type GenerationResult = {
 	tree: ValidatedTree;
 	review: DesignReview;
 };
+
+const getReviewFixList = (critique: readonly CritiqueFinding[]): string =>
+	critique
+		.map(
+			(finding, index) =>
+				`${index + 1}. ${finding.severity.toUpperCase()} ${finding.dimension}\n` +
+				`   Problem: ${finding.problem}\n` +
+				`   Required fix: ${finding.fix}`,
+		)
+		.join("\n");
+
+/**
+ * The self-review is not just a side panel: any critique findings it emits are
+ * treated as work still to do. This prompt is a bounded second pass, not an
+ * infinite quality loop — the model applies the concrete fixes it named, then
+ * returns the complete corrected tree plus a fresh review of the corrected
+ * result.
+ */
+export const getMandatoryReviewFixPrompt = (critique: readonly CritiqueFinding[]): string =>
+	`The design self-review found fixes that are mandatory before returning this prototype.\n\n` +
+	`Apply every concrete fix below to the current tree:\n\n${getReviewFixList(critique)}\n\n` +
+	`Return the COMPLETE corrected tree, every file, not a diff. ` +
+	`Update the design review to describe the corrected result. ` +
+	`Do not keep a critique item after its fix has been applied; only report findings that genuinely remain.`;
 
 /**
  * Turns the model's raw JSON into a stored-shape tree plus its design
@@ -66,7 +90,7 @@ export const getValidatedTree = async (
 	const firstAttempt = validateFileTree(raw.files, entryPoint);
 	const firstViolations = firstAttempt.ok ? checkDesignGuardrails(firstAttempt.value.files) : [];
 	if (firstAttempt.ok && firstViolations.length === 0) {
-		return { tree: firstAttempt.value, review: raw.review };
+		return getReviewFixedTreeIfNeeded(messages, raw, { tree: firstAttempt.value, review: raw.review }, entryPoint);
 	}
 
 	const feedback = !firstAttempt.ok
@@ -85,5 +109,31 @@ export const getValidatedTree = async (
 	} catch (error) {
 		throw new HttpError(502, "agent_provider_error", error instanceof Error ? error.message : String(error));
 	}
-	return getValidatedOrThrow(retry, entryPoint);
+	const validatedRetry = getValidatedOrThrow(retry, entryPoint);
+	return getReviewFixedTreeIfNeeded(messages, retry, validatedRetry, entryPoint);
+};
+
+const getReviewFixedTreeIfNeeded = async (
+	messages: OpenAI.ChatCompletionMessageParam[],
+	raw: RawPrototypeTree,
+	validated: GenerationResult,
+	entryPoint: string,
+): Promise<GenerationResult> => {
+	const critique = validated.review.rubric.critique;
+	if (critique.length === 0) {
+		return validated;
+	}
+
+	messages.push(
+		{ role: "assistant", content: JSON.stringify(raw) },
+		{ role: "user", content: getMandatoryReviewFixPrompt(critique) },
+	);
+
+	let fixed: RawPrototypeTree;
+	try {
+		fixed = await getStructuredCompletion(messages);
+	} catch (error) {
+		throw new HttpError(502, "agent_provider_error", error instanceof Error ? error.message : String(error));
+	}
+	return getValidatedOrThrow(fixed, entryPoint);
 };

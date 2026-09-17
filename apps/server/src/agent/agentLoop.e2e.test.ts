@@ -23,7 +23,18 @@ const readBody = (request: IncomingMessage): Promise<string> =>
 		request.on("error", reject);
 	});
 
-const review = (purpose: string): RawPrototypeTree["review"] => ({
+const mandatoryStateVisibilityFix: RawPrototypeTree["review"]["rubric"]["critique"][number] = {
+	dimension: "state-visibility",
+	observation: "Operational rows include explicit status and recovery copy.",
+	problem: "Without those labels, users would not know whether the agent is proposing or executing.",
+	fix: "Keep the state labels adjacent to the affected rows.",
+	severity: "minor",
+};
+
+const review = (
+	purpose: string,
+	critique: RawPrototypeTree["review"]["rubric"]["critique"] = [],
+): RawPrototypeTree["review"] => ({
 	purpose,
 	primaryAction: "Review the agent work and decide the next step.",
 	componentsUsed: ["Layout.Stack", "Card", "Badge", "Button"],
@@ -37,15 +48,7 @@ const review = (purpose: string): RawPrototypeTree["review"] => ({
 		componentProvenance: "strong",
 		agentLineage: "Each agent claim has a visible source/evidence label beside it.",
 		stateCoverage: "The screen names empty, loading, error, success, disabled, and needs-attention states.",
-		critique: [
-			{
-				dimension: "state-visibility",
-				observation: "Operational rows include explicit status and recovery copy.",
-				problem: "Without those labels, users would not know whether the agent is proposing or executing.",
-				fix: "Keep the state labels adjacent to the affected rows.",
-				severity: "minor",
-			},
-		],
+		critique,
 	},
 });
 
@@ -90,14 +93,27 @@ export default function App() {
 `,
 		},
 	],
-	review: review("A compact Wonderful agent-operations review panel."),
+	review: review("A compact Wonderful agent-operations review panel.", [mandatoryStateVisibilityFix]),
+};
+
+const reviewFixedGeneratedTree: RawPrototypeTree = {
+	files: [
+		{
+			path: "src/App.tsx",
+			contents: generatedTree.files[0]!.contents.replace(
+				"Empty/loading/error notes stay near the affected task.",
+				"Empty/loading/error notes stay adjacent to the affected task. Mandatory review fixes applied.",
+			),
+		},
+	],
+	review: review("The generated panel after mandatory self-review fixes."),
 };
 
 const rewrittenTree: RawPrototypeTree = {
 	files: [
 		{
 			path: "src/App.tsx",
-			contents: generatedTree.files[0]!.contents.replace("Agent Ops Review", "Agent Ops Review Live"),
+			contents: reviewFixedGeneratedTree.files[0]!.contents.replace("Agent Ops Review", "Agent Ops Review Live"),
 		},
 	],
 	review: review("The generated panel after a title-only rewrite."),
@@ -105,7 +121,7 @@ const rewrittenTree: RawPrototypeTree = {
 
 describe("agent loop E2E", () => {
 	const requests: CompletionRequest[] = [];
-	const responses = [invalidFirstAttempt, generatedTree, rewrittenTree];
+	const responses = [invalidFirstAttempt, generatedTree, reviewFixedGeneratedTree, rewrittenTree];
 	let server: ReturnType<typeof createServer>;
 	let baseURL = "";
 
@@ -158,7 +174,7 @@ describe("agent loop E2E", () => {
 		});
 	});
 
-	it("generates, retries on a hard-gate violation, then rewrites a validated tree", async () => {
+	it("generates, fixes self-review findings, then rewrites a validated tree", async () => {
 		process.env.OPENAI_API_KEY = "local-e2e-key";
 		process.env.OPENAI_BASE_URL = baseURL;
 		process.env.OPENAI_MODEL = "agent-loop-e2e";
@@ -170,9 +186,9 @@ describe("agent loop E2E", () => {
 
 		assert.equal(generated.tree.entryPoint, "src/App.tsx");
 		assert.equal(generated.tree.files.length, 1);
-		assert.match(generated.tree.files[0]!.contents, /Escalation triage/);
+		assert.match(generated.tree.files[0]!.contents, /Mandatory review fixes applied/);
 		assert.match(generated.review.rubric.stateCoverage, /loading/);
-		assert.equal(generated.review.rubric.critique[0]?.dimension, "state-visibility");
+		assert.equal(generated.review.rubric.critique.length, 0);
 
 		const rewritten = await rewritePrototype(
 			generated.tree.files,
@@ -181,10 +197,13 @@ describe("agent loop E2E", () => {
 		);
 
 		assert.match(rewritten.tree.files[0]!.contents, /Agent Ops Review Live/);
-		assert.equal(requests.length, 3);
+		assert.equal(requests.length, 4);
 		assert.match(requests[0]!.messages[0]!.content, /UX review discipline/);
 		assert.match(requests[1]!.messages.at(-1)!.content, /violates the Wonderful Design Guardrails/);
 		assert.match(requests[1]!.messages.at(-1)!.content, /no-real-network-calls/);
-		assert.match(requests[2]!.messages[1]!.content, /Change the page title to Agent Ops Review Live/);
+		assert.match(requests[2]!.messages.at(-1)!.content, /mandatory before returning/);
+		assert.match(requests[2]!.messages.at(-1)!.content, /Keep the state labels adjacent/);
+		assert.match(requests[3]!.messages[1]!.content, /Mandatory review fixes applied/);
+		assert.match(requests[3]!.messages[1]!.content, /Change the page title to Agent Ops Review Live/);
 	});
 });

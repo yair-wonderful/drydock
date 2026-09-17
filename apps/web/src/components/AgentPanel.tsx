@@ -140,9 +140,9 @@ const RUBRIC_AXES = [
 
 /**
  * Wonderful Design Guardrails' rubric layer, shown alongside every
- * generation — advisory, never blocking. See
- * docs/wonderful-design-guardrails.md for what each field means and why
- * this stays a self-report rather than a mechanical check.
+ * generation. Server-side critique findings have already triggered one
+ * mandatory repair pass before this review is returned; any findings still
+ * shown here are the remaining review agenda.
  */
 function DesignReviewPanel({ review }: { review: DesignReview }) {
 	return (
