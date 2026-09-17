@@ -213,6 +213,101 @@ const TRANSITION_ALL_PATTERN = /\btransition-all\b|transition\s*:\s*all\b|will-c
 // verified behavior is worse than no gate at all, so this stays unenforced
 // pending clarification of which component the rule actually applies to.
 
+/**
+ * Every generation-time gate, as data — so the guardrails can be exported
+ * for a team re-implementing them outside this codebase (see
+ * `scripts/exportGuardrails.ts`) without anyone re-deriving the rationale
+ * or the verification history by reading the checks.
+ *
+ * Deliberately metadata ALONGSIDE the checks rather than a data-driven
+ * rewrite of them: three of these (imports, unlabeled inputs, icon-only
+ * controls) are loops over `matchAll` with per-match conditions, not single
+ * regex tests, and flattening them into a table would cost more clarity
+ * than the table buys. A test asserts this catalogue and the rule strings
+ * in `checkFile` never drift apart.
+ */
+export type GuardrailRuleDoc = {
+	rule: string;
+	/** What it rejects, in one line. */
+	checks: string;
+	/** Why it is a gate and not a rubric item. */
+	rationale: string;
+	/** What was verified before it was allowed to block, where that
+	 * verification is the reason the gate is shaped the way it is. */
+	verification?: string;
+};
+
+export const GUARDRAIL_CATALOGUE: readonly GuardrailRuleDoc[] = [
+	{
+		rule: "no-external-libraries",
+		checks: 'any import outside "@wonderful/ui-base", "react", and relative paths',
+		rationale:
+			"A prototype is meant to become production code. An import the platform does not have is a dead end at handoff, not a styling preference.",
+	},
+	{
+		rule: "no-real-network-calls",
+		checks: "fetch, XMLHttpRequest, new WebSocket, axios",
+		rationale:
+			"A prototype's data is local and honestly mocked. A call that looks real but silently fails — or accidentally reaches something real — is worse than an obvious stub.",
+	},
+	{
+		rule: "no-inline-styles",
+		checks: "style={{...}}",
+		rationale: "Inline styles bypass the design system's spacing and layout props, which is the thing being prototyped.",
+	},
+	{
+		rule: "no-uppercase-text-transform",
+		checks: 'text-transform: uppercase, or an "uppercase" class inside a className',
+		rationale: "Stated as an iron rule by Wonderful's own ui-visual-design skill: never render text a person reads in all caps.",
+		verification:
+			'Scoped to className values specifically, so the ordinary word "uppercase" in UI copy or a comment is never mistaken for the utility.',
+	},
+	{
+		rule: "no-hardcoded-colors",
+		checks: "hex, rgb()/rgba()/hsl()/hsla(), or a raw Tailwind colour-shade class such as text-gray-500",
+		rationale: "Colour comes from semantic tokens. A hardcoded value breaks theming and dark mode and cannot be re-themed at handoff.",
+	},
+	{
+		rule: "no-arbitrary-tailwind-values",
+		checks: "bracketed arbitrary values such as pt-[37px]",
+		rationale: "If a value does not fit the design system's scale, the layout is off-grid — the utility is not the problem.",
+	},
+	{
+		rule: "no-physical-direction-utilities",
+		checks: "pl-/pr-/ml-/mr-/border-l-/border-r-/rounded-l/rounded-r/text-left/text-right/left-/right-",
+		rationale:
+			"Most Wonderful conversation traffic is Hebrew and Arabic, so a physically anchored layout mirrors wrong for the majority of real use. Use ps-/pe-, ms-/me-, text-start/text-end, start-/end-, border-s-/border-e- instead.",
+		verification:
+			"Verified against the vendored design system before gating: it uses the logical forms heavily (27x text-start, dozens of ps-/pe-/ms-/me-), so Tailwind emits them and the compiler accepts the fix this gate demands. rounded-l/r are matched with a trailing boundary so the very common rounded-lg never trips it.",
+	},
+	{
+		rule: "no-transition-all",
+		checks: "transition-all, transition: all, will-change: all",
+		rationale: "Name the exact properties that change. A blanket transition animates things nobody asked to move, on a surface people triage quickly.",
+		verification:
+			"NOT redundant with the compile-time utility check: the design system itself ships transition-all in 12 places, so Tailwind emits it and the compiler accepts it. This gate is the only thing that catches it.",
+	},
+	{
+		rule: "no-unlabeled-inputs",
+		checks: "a self-closing <Input/> or <input/> with no aria-label, aria-labelledby, or label attribute",
+		rationale: "An input with no accessible name is broken for screen readers, and that is not a judgement call.",
+		verification:
+			"Under-reports on purpose: a multi-line <label> wrapping an input is not caught, because a regex has no notion of descendancy. For a gate that BLOCKS, a false negative is safer than a false positive.",
+	},
+	{
+		rule: "no-inaccessible-icon-controls",
+		checks: "a self-closing <Button/> or <button/> with no accessible name",
+		rationale: "An icon-only control needs an aria-label; a tooltip is visual only and is not an accessible name.",
+		verification: "A labelled button is never self-closing, so this heuristic does not flag <Button>Save</Button>.",
+	},
+	{
+		rule: "mock-data-separated",
+		checks: "three or more adjacent object literals in a non-data file",
+		rationale: "The UI and the data it happens to be showing are different things, and an engineer at handoff needs to see which is which.",
+		verification: "Approximate by construction — counts `}, {` boundaries rather than parsing. Skipped for .json and *Data.ts files.",
+	},
+];
+
 const checkFile = (file: PrototypeFile): GuardrailViolation[] => {
 	const violations: GuardrailViolation[] = [];
 	const isData = file.path.endsWith(".json") || /data\.tsx?$/i.test(file.path);

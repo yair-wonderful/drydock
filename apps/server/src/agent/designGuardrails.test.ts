@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { checkDesignGuardrails } from "./designGuardrails.ts";
+import { checkDesignGuardrails, GUARDRAIL_CATALOGUE } from "./designGuardrails.ts";
 
 const okFile = (contents: string) => [{ path: "src/index.tsx", contents }];
 
@@ -195,6 +196,29 @@ describe("checkDesignGuardrails", () => {
 			okFile(`<Button className="transition-opacity duration-150">Save</Button>;\n`),
 		);
 		assert.deepEqual(violations, []);
+	});
+
+	/**
+	 * The catalogue is what gets exported for another team to re-implement
+	 * (`scripts/exportGuardrails.ts`). If a gate is added, removed or
+	 * renamed without the catalogue following, the export ships a lie —
+	 * so compare the catalogue against the rule strings in the source
+	 * itself rather than against a second hand-maintained list.
+	 */
+	it("documents exactly the rules checkFile can actually emit", () => {
+		const source = readFileSync(new URL("./designGuardrails.ts", import.meta.url), "utf8");
+		const emitted = new Set(
+			[...source.matchAll(/^\t+rule: "([a-z-]+)",$/gm)].map((match) => match[1]),
+		);
+		const documented = new Set(GUARDRAIL_CATALOGUE.map((entry) => entry.rule));
+		assert.deepEqual([...documented].sort(), [...emitted].sort());
+	});
+
+	it("gives every documented rule a rationale for why it blocks", () => {
+		for (const entry of GUARDRAIL_CATALOGUE) {
+			assert.ok(entry.checks.trim().length > 0, `${entry.rule} says nothing about what it checks`);
+			assert.ok(entry.rationale.trim().length > 0, `${entry.rule} has no rationale`);
+		}
 	});
 
 	it("attributes each violation to the file it was found in", () => {

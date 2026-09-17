@@ -86,6 +86,7 @@ invisible unless you show it.
 | `apps/web/src/anchoring/` | Comment anchoring by element identity, resolving to `attached` / `needsReview` / `orphaned` |
 | `apps/web/src/blackbird/` | Packaging a compiled prototype as an infinite-canvas frame |
 | `apps/web/blackbird-join/` | An idempotent patcher that joins the engine to a Blackbird checkout without modifying its canvas, contract, comments or service worker |
+| `scripts/exportGuardrails.ts` | `pnpm run export:guardrails` — packages the guardrails (prompt, gates as data, review corpus, rationale) for a team implementing them outside this repo |
 | `scripts/fetchDesignSystem.ts` | The only link to the monorepo |
 | `scripts/checkDesignSystemStaleness.ts` | Reports whether the vendored pin is behind `libs/ui`/`libs/theme` |
 | `apps/server/src/agent/` | The agent loop: generate a prototype from a prompt, or rewrite the current one per an instruction, through OpenAI structured outputs |
