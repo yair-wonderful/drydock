@@ -54,16 +54,15 @@ export type ValidatedTree = {
  */
 export type Result<T> = { ok: true; value: T } | { ok: false; error: PrototypeValidationError };
 
-/** A subjective self-rating, on the Wonderful Design Guardrails rubric. Never
- * blocks anything — see `docs/wonderful-design-guardrails.md`. */
+/** A subjective self-rating, on the Wonderful Design Guardrails rubric. */
 export type GuardrailFitRating = "strong" | "medium" | "weak";
 
 /**
  * The agent's own account of what it built, attached to every generation —
- * "Guardrails v0"'s rubric layer. Shown alongside a prototype, never
- * mechanically enforced: a rating here is a self-report from the model that
- * wrote the tree, not a verified fact. It exists so a reviewer (human or a
- * later automated pass) has something concrete to check the work against,
+ * "Guardrails v0"'s rubric layer. Shown alongside a prototype, but not
+ * mechanically trusted as a verified fact. Critique findings are executed by a
+ * bounded mandatory repair pass before the tree is returned; the remaining
+ * fields exist so a reviewer has something concrete to check the work against,
  * and so repeated patterns in `knownGaps` / weak ratings have somewhere to
  * accumulate before any of them earns promotion to a hard gate.
  */

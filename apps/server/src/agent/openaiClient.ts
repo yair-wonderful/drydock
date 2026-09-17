@@ -147,12 +147,12 @@ export const getStructuredCompletion = async (messages: OpenAI.ChatCompletionMes
 			},
 		});
 	} catch (error) {
-		throw new Error(`OpenAI request failed: ${error instanceof Error ? error.message : String(error)}`);
+		throw new Error(`Model request failed: ${error instanceof Error ? error.message : String(error)}`);
 	}
 
 	const content = response.choices[0]?.message.content;
 	if (!content) {
-		throw new Error("OpenAI returned no content");
+		throw new Error("Model returned no content");
 	}
 	return JSON.parse(content) as RawPrototypeTree;
 };

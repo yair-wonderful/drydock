@@ -55,11 +55,13 @@ for one corrective retry (see `apps/server/src/agent/generateTree.ts`).
 These are compatibility rules, not design opinions: getting one wrong
 isn't a judgment call, it's broken.
 
-**The rubric** is subjective and shown, not enforced — attached to every
-generation as a `review` object (see `packages/prototype/src/types.ts`'s
-`DesignReview`), visible in the harness UI, never blocking. It exists so a
-reviewer has something concrete to check the work against, and so failure
-patterns can accumulate before any of them earns promotion to a gate.
+**The rubric** is subjective but active — attached to every generation as a
+`review` object (see `packages/prototype/src/types.ts`'s `DesignReview`),
+visible in the harness UI, and used as a bounded repair instruction. After a
+tree passes hard gates, any `review.rubric.critique` findings trigger one
+mandatory follow-up pass that applies the concrete fixes before the tree is
+returned. Ratings, known gaps, and any remaining critique are still
+self-reports, not verified facts.
 
 **A rubric item is promoted to a gate only once it is both (a) genuinely
 mechanically checkable, and (b) actually the thing people keep failing in
@@ -307,20 +309,21 @@ rather than a critique prompt.
 The uploaded UX review files are useful as a review method, not as source
 content to copy. The parts that landed are stripped of source-tool instructions,
 non-Wonderful product context, non-target package names, and source-specific
-routing. What remains is a compact advisory layer in
+routing. What remains is a compact review-discipline layer in
 `apps/server/src/agent/uxReviewDiscipline.ts`.
 
 That layer asks the model and reviewer to check seven things before handing
 a prototype over: flow/state completeness, wayfinding, interaction-risk
 calibration, system visibility, permissions and recovery, Wonderful domain
-fit, and output quality. It improves the self-review artifact without
-turning subjective UX judgment into a hard gate.
+fit, and output quality. Critique fixes from that review are now executed by
+the mandatory repair pass, without turning subjective UX judgment into a
+mechanical hard gate.
 
 The rule for future promotion stays unchanged: a review-discipline item can
 become a gate only if it is mechanically checkable and repeatedly
 non-negotiable in Wonderful review evidence. Until then it remains a rubric
-or an open question, because a wrong gate would recreate the design
-bottleneck inside the tool.
+item, repair-pass instruction, or open question, because a wrong gate would
+recreate the design bottleneck inside the tool.
 
 ## Where the general skill library did and didn't land
 
@@ -393,11 +396,12 @@ quality tradeoff once a real key exists.
 ## What's not in v0
 
 - **The corpus is still not a scored benchmark.** The critique instrument
-  now gives a generated screen a structured self-review, but that is the
-  model marking its own homework. Nothing yet runs the critique as an
-  independent pass against the corpus and produces a number, which is what
-  would finally answer "is Drydock's output better than what we ship
-  today". The instrument is built; the scoring harness is not.
+  now gives a generated screen a structured self-review and one mandatory
+  repair pass, but that is still the model marking and correcting its own
+  homework. Nothing yet runs the critique as an independent pass against the
+  corpus and produces a number, which is what would finally answer "is
+  Drydock's output better than what we ship today". The instrument is built;
+  the scoring harness is not.
 - **The underlying agentic principles are still missing.** The agentic-UX
   document is the *applied* layer of a broader principle set. The document
   defining that set has never been supplied, so what is encoded here rests
@@ -411,7 +415,7 @@ quality tradeoff once a real key exists.
   wrapping an input across multiple lines, for instance), because a gate
   that blocks should err toward missing a real violation rather than
   rejecting valid work.
-- No mechanism yet aggregates `knownGaps`, `rubric.critique`, or weak ratings
-  across generations to surface promotion candidates for the gate layer.
+- No mechanism yet aggregates `knownGaps`, remaining `rubric.critique`, or
+  weak ratings across generations to surface promotion candidates for the gate layer.
   Per Finding 1 this is now lower priority than it looked: the corpus
   suggests the next real win is in the prompt, not the gates.
