@@ -18,11 +18,22 @@ const getApiKey = (): string => {
 
 let shared: OpenAI | null = null;
 
+type OpenAiClientOptions = NonNullable<ConstructorParameters<typeof OpenAI>[0]>;
+
+export const getOpenAiClientOptions = (): OpenAiClientOptions => {
+	const baseURL = process.env.OPENAI_BASE_URL?.trim();
+	return {
+		apiKey: getApiKey(),
+		timeout: 120_000,
+		...(baseURL ? { baseURL } : {}),
+	};
+};
+
 /** The process-wide client — a `get*` since the SDK's own instance holds no
  * per-request state worth isolating, unlike `apps/server/src/db/connect.ts`'s
  * pool (which tests deliberately need their own copy of). */
 export const getOpenAiClient = (): OpenAI => {
-	shared ??= new OpenAI({ apiKey: getApiKey(), timeout: 120_000 });
+	shared ??= new OpenAI(getOpenAiClientOptions());
 	return shared;
 };
 
