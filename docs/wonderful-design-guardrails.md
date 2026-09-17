@@ -1,0 +1,417 @@
+# Wonderful Design Guardrails v0
+
+Drydock's first audience is engineers and PMs on Wonderful's own
+platform/core-product R&D teams, generating internal-tool and product
+screens fast enough to unblock a design discussion — and, when the idea
+holds up, to hand to engineering as the actual starting point for a real
+build. That second half is the whole reason this document exists: a
+prototype that only needs to *look* plausible is a much lower bar than one
+that needs to survive becoming production code.
+
+The AI-prototyping lesson this encodes: a model that merely "uses the real
+component library" produces something that compiles but does not
+necessarily read as *your* product. It only becomes genuinely useful once
+the organization's own standards — not just its components — are encoded
+into the tool. This document is that encoding for Wonderful.
+
+## What kind of product this is
+
+Before any rule about spacing or colour: almost every screen Drydock will
+be asked to generate is one where **an agent did something and a human has
+to decide whether to trust it**. Wonderful's own framing is a shift from
+*user-as-operator* to *user-as-manager* — people supervise, audit and
+authorise agents rather than driving the software themselves.
+
+That changes what a good screen is. The load-bearing rule, from
+`apps/server/src/agent/agenticUxGuardrails.ts`:
+
+> Never present an agent's conclusion without a visible, accessible path
+> back to its premise.
+
+Everything else in that layer follows from it — outcome at the top and the
+leading edge with raw payloads collapsed beneath; spacing that groups a
+task with its own execution trace (the gap *between* tasks at least twice
+the gap *within* one); affordances that distinguish human action from
+agent proposal from agent execution; friction that scales with
+reversibility rather than with the agent's confidence; the clean handoff
+that puts an agent's summary, its specific blocker, and the human controls
+in one container.
+
+Getting spacing right on a screen that hides an agent's reasoning is a
+well-made prototype of the wrong product. That's why this layer sits
+*before* the visual canon in the system prompt.
+
+Motion choreography from that document (cross-fade curves, entrance
+stagger timings) and GPU hints are deliberately **not** encoded — they're
+build-time implementation specs, and animation in a prototype competes
+with the layout it exists to get reviewed. The restraint half is kept, and
+gated.
+
+## Two layers, on purpose
+
+**Hard gates** are objective and enforced now — a violation fails
+generation immediately, with the specific failure fed back to the model
+for one corrective retry (see `apps/server/src/agent/generateTree.ts`).
+These are compatibility rules, not design opinions: getting one wrong
+isn't a judgment call, it's broken.
+
+**The rubric** is subjective and shown, not enforced — attached to every
+generation as a `review` object (see `packages/prototype/src/types.ts`'s
+`DesignReview`), visible in the harness UI, never blocking. It exists so a
+reviewer has something concrete to check the work against, and so failure
+patterns can accumulate before any of them earns promotion to a gate.
+
+**A rubric item is promoted to a gate only once it is both (a) genuinely
+mechanically checkable, and (b) actually the thing people keep failing in
+ways that break the production-handoff promise.** Never promote a purely
+aesthetic judgment call — there is no mechanical check for "does this feel
+right" that won't also block legitimate work, and the audience this tool
+exists to unblock is already blocked by one human bottleneck; a gate that
+gets a subjective call wrong just relocates that bottleneck into the tool.
+
+## Where enforcement actually lives
+
+Two independent layers catch different things, and neither duplicates the
+other:
+
+1. **Generation time, in `apps/server`** (`designGuardrails.ts`) — cheap,
+   generic mistakes checked by regex/string heuristics over the raw source:
+   an import from outside the allowlist, inline styles, a real network
+   call, an unlabeled input, an icon-only control with no label, mock data
+   inlined instead of separated. `apps/server` has no parser and no
+   vendored design system to check component names against, so it doesn't
+   try to.
+2. **Compile time, in `apps/web`'s browser compiler** — the authoritative
+   check for "does this component or utility class actually exist in
+   `@wonderful/ui`". It already rejects an unrecognized Tailwind utility
+   class and fails to resolve an invented component export; nothing in
+   layer 1 duplicates this, it only covers what a compiler can't see
+   because no compile step runs server-side.
+
+A tree can pass generation-time gates and still fail to compile (a real
+component name that doesn't actually exist, for instance) — that failure
+surfaces to the author in the harness exactly as a hand-typed mistake
+would, per the existing compile-time rejection Drydock has always had.
+
+## Hard gates (v0)
+
+- Import only `@wonderful/ui-base`, `react`, and relative files (`./`,
+  `../`) — no other package, ever.
+- No invented component names (checked definitively at compile time; see
+  above).
+- No arbitrary or unavailable utility classes (checked definitively at
+  compile time).
+- A valid entry point, present in the tree, and valid relative file paths
+  (checked by `validateFileTree`, the same check every write path in this
+  repo goes through).
+- No inline styling (`style={{...}}`) — use the design system's own
+  spacing/layout props and utility classes.
+- No real network calls (`fetch`, `XMLHttpRequest`, `WebSocket`, an HTTP
+  client) — a prototype's data is local and honestly mocked, never a call
+  that looks real but silently fails or accidentally reaches something
+  real.
+- Mock data lives in its own file (a `.json` import or a small `*Data.ts`
+  module), not inlined as a large literal inside a component.
+- Every form input has an accessible name — an `aria-label`,
+  `aria-labelledby`, or an associated `<label>`.
+- An icon-only control (no visible text) has an `aria-label`.
+- No all-caps text (`uppercase`, `text-transform: uppercase`).
+- No hardcoded colours (hex, `rgb()`/`hsl()`, raw Tailwind colour-shade
+  classes) — use the design system's semantic tokens.
+- No arbitrary bracketed Tailwind values (`pt-[37px]`).
+- **Logical direction utilities only** — `ps-`/`pe-`, `ms-`/`me-`,
+  `text-start`/`text-end`, `start-`/`end-`, `border-s-`/`border-e-`, never
+  `pl-`/`pr-`/`ml-`/`mr-`/`text-left`/`text-right`/`left-`/`right-`. Most
+  Wonderful conversation traffic is Hebrew and Arabic, so a physically
+  anchored layout mirrors wrong for the majority of real use. Verified
+  before gating: the vendored design system uses the logical forms heavily
+  (27 × `text-start`, dozens of `ps-`/`pe-`/`ms-`/`me-`), so Tailwind emits
+  them and the compiler accepts the fix this gate asks for.
+- **Never `transition-all`** (or `transition: all`, `will-change: all`) —
+  name the properties that change. See the conflict note below.
+
+## Conflicts found while encoding the source documents
+
+Encoding an internal document against a real codebase surfaces places
+where the two disagree. These are recorded rather than silently resolved.
+
+**The design system violates the `transition-all` rule 12 times.** The
+agentic-UX guardrails say "Never use `transition: all`", but `vendor/ui`
+ships `transition-all` in 12 places, which means Tailwind emits it and the
+browser compiler will happily accept it. The gate above therefore isn't
+redundant with the compiler — it's the only thing that catches it. A
+prototype author is still bound by the rule; whether the design system
+should be too is a question for whoever owns both.
+
+**"Stack takes only gap + children" is not enforced.** The `ui-components`
+skill states it as an iron rule, but this repo's own verified, compiling
+fixture uses `<Layout.Stack gap="lg" className="p-8">`. The rule most
+likely describes a different, bare `Stack` export than `Layout.Stack`. A
+gate contradicted by empirically verified behaviour is worse than no gate,
+so it stays out pending clarification.
+
+**Optical alignment can't be expressed under the arbitrary-value gate.**
+The agentic-UX document asks for `icon-side padding = text-side padding −
+2px`, which requires a bracketed arbitrary value that this repo gates
+against. Resolved in favour of the gate: optical balance inside a button is
+the design system component's job, solved once, not something a prototype
+author hand-tunes per screen.
+
+**The `ui-components` skill file has an unresolved git merge conflict** in
+its own text (an "Iron rules" table appearing twice, under
+`<<<<<<< Updated upstream` / `>>>>>>> Stashed changes`). The fuller version
+was used, since it's a strict superset. That source file should still get
+its conflict resolved for real.
+
+**Two unknowns in the agentic-UX document**, flagged rather than guessed:
+its foundational principles are cited but the source document defining them
+was never supplied, so only the applied layer is encoded here; and it names
+source package names outside the Drydock target set, so no rule depends on an API outside
+`@wonderful/ui` / `@wonderful/ui-base`.
+
+## The review corpus, and what it changed
+
+The rubric below is not derived from first principles. It is derived from
+`apps/server/src/agent/designReviewCorpus.ts` — a verbatim transcription of
+31 comment pins (34 individual remarks) that a Wonderful designer left on
+four real Wonderful screens in a design review file, where
+each screen appears twice: a reference frame the design team considers
+good, and the same screen as it ships in production.
+
+Two findings from that corpus changed the design of this system rather
+than just adding to it.
+
+**Finding 1: none of the nine hard gates would have caught any of the 34
+remarks.** Production code already imports the right components, uses the
+right tokens, and has no inline styles — it passes every gate we have.
+Every defect the reviewer found was in composition and calibration. The
+gate layer is at its useful limit; the leverage is in the prompt and the
+rubric. The corpus asserts this in data rather than prose: every finding
+carries a `mechanicallyCheckable` flag, all are currently `false`, and a
+test fails if that ever stops being true — which would mean a new gate is
+genuinely owed.
+
+**Finding 2: four of the pins are on the *reference* frame.** The screens
+the design team holds up as good get picked apart too. There is no clean
+exemplar, so a guardrail system built by imitating Wonderful's best
+screens would inherit their defects along with their virtues. This is why
+the prompt teaches the *reviewer's* eye rather than a canonical screen.
+
+The clusters, by frequency:
+
+| Cluster | n | What it sounds like |
+|---|---|---|
+| Contrast / weight | 8 | "Not readable", "Text too light", "Too dark", "Icons look darker than text", "Too colorfull" |
+| Spacing | 6 | "Spacing between tabs", "not enough space", "Too much air?" |
+| Geometry | 5 | "Feels to narrow (height)", "Corner radius not accurate", "button ratio feels off" |
+| Component provenance | 5 | "Is this a thing?", "Do we have a component for that?", "deprecated style" |
+| Affordance | 3 | "Looks like a button", "Primary?", "Should be icon only" |
+| Container nesting | 3 | "why box in box?", "The full width button inside the gray box is weird" |
+| Unsettled | 3 | "Toggle should be on the left?", "Do we like the shadow?" |
+| State legibility | 1 | "Which one is selected" |
+
+Note the contrast cluster cuts **both ways** — an icon too dark sitting
+next to a placeholder too light, in the same field. The rule is not "go
+darker"; it is that every element sits at one correct weight and siblings
+inside a single control agree with each other.
+
+Note also that **`unsettled` findings are questions, not rules.** They are
+kept because the frequency of a question is signal, but nothing derived
+from the corpus may turn one into an assertion — `getReviewerVoicePrompt`
+filters them out, and a test enforces that. Encoding an argument that
+hasn't finished is how a tool starts losing arguments on people's behalf.
+
+### The one cluster Drydock already wins
+
+"Do we have a component for that?", "Is this a thing?", "should this be a
+component?", "deprecated style" — five remarks asking whether what the
+reviewer is looking at is real. Drydock's browser compiler answers that
+mechanically, on every generation, before a human ever sees the screen.
+That is a structural advantage over a hand-built screen, and the reason
+`componentProvenance` is a rubric axis rather than a worry.
+
+## Rubric (shown, never enforced)
+
+Five rated axes — the clusters above, minus the ones that are questions or
+too rare to rate — plus two prose fields. Each is `strong` / `medium` /
+`weak`, and the point of the rating is to tell a reviewer **where to
+look**, which the previous axes (`wonderfulFit`, `handoffReadiness`)
+couldn't: a "medium" on "wonderful fit" names no part of the screen.
+
+- **`contrastLadder`** — does every text and icon sit on the 3-step ladder,
+  and do siblings inside one control agree?
+- **`spacingRhythm`** — did every gap come off the scale, with no zero-gap
+  pairing and no dead space?
+- **`affordanceClarity`** — does everything that looks interactive act
+  interactive, and is exactly one action styled primary?
+- **`containerDepth`** — is every nested container earning its nesting?
+- **`componentProvenance`** — is every part a real `@wonderful/ui-base`
+  component or an honest composition of primitives?
+
+Plus:
+
+- **`agentLineage`** (prose) — where a reader goes to see *why* an agent
+  concluded what it concluded. From the agentic-UX guardrails' first
+  principle: never present an AI conclusion without an accessible path to
+  its premise. Prose rather than a rating because "no agent output on this
+  screen" is a common and legitimate answer, and a `strong` there would be
+  noise.
+- **`stateCoverage`** (prose) — which of loading / empty / error / success /
+  disabled / needs-attention are covered, and which aren't. Kept despite
+  having **no corpus support**: the corpus is static screenshots of one
+  state each, so its silence here is a sampling artifact, not evidence that
+  state coverage doesn't matter.
+- **`critique`** (list) — the findings the model expects a Wonderful
+  reviewer to inspect first, each in Observation → Problem → Fix form. The
+  most useful field in the rubric: it turns the model's uncertainty into
+  the reviewer's agenda instead of hiding it behind a rating.
+
+## The critique instrument
+
+The corpus records what good review looks like; it doesn't perform one.
+Five internal `critique-*` skills (visual-hierarchy, typography,
+composition, affordance, information-density) supply the missing
+instrument, and they arrive already sharing one contract: four dimensions
+each, every finding stated **Observation → Problem → Fix**, rated
+pass / minor / major. Twenty dimensions, one shape — which is what makes
+them encodable as a type rather than prose
+(`apps/server/src/agent/designCritique.ts`).
+
+Every generation now carries `rubric.critique`: an array of findings, each
+naming a dimension, what's there, what's wrong with it, the specific fix,
+and a severity.
+
+**Findings only, never a matrix.** The skills rate all four dimensions
+every time. This artifact asks only for the dimensions where something is
+actually wrong, because a model made to emit twenty rows pads nineteen of
+them, and twenty rows reading "pass" tell a reviewer nothing the rated axes
+don't already say. An omitted dimension means "checked, nothing found".
+
+**One dimension is not from the skills.** `critique-typography` covers
+contrast as WCAG compliance (4.5:1 body, 3:1 large). The corpus's contrast
+complaints are *not* WCAG failures — "Placeholder too light", "Too dark",
+"Icons look darker than text" are about the 3-step ladder and about
+siblings inside one control disagreeing. A placeholder can pass AA and
+still be wrong here. So `contrast-ladder` is sourced from the corpus, and a
+test fails if it ever disappears — otherwise the biggest corpus cluster
+would have no critique dimension.
+
+**One cluster has no dimension, deliberately.** `component-provenance`
+("Is this a thing?", "Do we have a component for that?") is the cluster
+Drydock answers mechanically at compile time, so it stays a rubric axis
+rather than a critique prompt.
+
+
+## What the uploaded UX review skills changed
+
+The uploaded UX review files are useful as a review method, not as source
+content to copy. The parts that landed are stripped of source-tool instructions,
+non-Wonderful product context, non-target package names, and source-specific
+routing. What remains is a compact advisory layer in
+`apps/server/src/agent/uxReviewDiscipline.ts`.
+
+That layer asks the model and reviewer to check seven things before handing
+a prototype over: flow/state completeness, wayfinding, interaction-risk
+calibration, system visibility, permissions and recovery, Wonderful domain
+fit, and output quality. It improves the self-review artifact without
+turning subjective UX judgment into a hard gate.
+
+The rule for future promotion stays unchanged: a review-discipline item can
+become a gate only if it is mechanically checkable and repeatedly
+non-negotiable in Wonderful review evidence. Until then it remains a rubric
+or an open question, because a wrong gate would recreate the design
+bottleneck inside the tool.
+
+## Where the general skill library did and didn't land
+
+Twenty-one general design skills were supplied. Most of their content is
+correct and does not belong in a generation prompt — process advice (card
+sorts, tree testing, usability studies), research method, and anything
+about marketing pages can't be acted on mid-generation. What survived is in
+`apps/server/src/agent/uxFoundations.ts`, filtered by three tests: concrete
+enough to act on while writing a component, not already covered, and
+relevant to an internal Wonderful platform screen.
+
+Three of those rules earn their place by being independently corroborated
+by the corpus — the library and the reviewer arrived at the same finding from
+different directions:
+
+| Skill rule | Corpus pin |
+|---|---|
+| Every nav item needs a selected state legible by more than colour | "Which one is selected" |
+| Limit container nesting to two levels | "why box in box?", "The full width button inside the gray box is weird" |
+| Put actions on the thing they act on | "The full width button inside the gray box is weird" |
+
+**`animation-principles` was rejected on conflict.** It prescribes a 30–50ms
+entrance stagger and recommends `will-change` for performance. Wonderful's
+own agentic-UX document says stagger ~100ms, only for infrequent macro
+changes, and warns `will-change` is for elements that genuinely benefit. A
+generic skill does not override the organisation's considered position.
+
+**`interface-design` conflicts with Drydock architecturally, not
+cosmetically.** It is the best-written skill in the set, and its diagnosis
+of the core risk is sharper than anything else supplied:
+
+> If another AI, given a similar prompt, would produce substantially the
+> same output, you have failed.
+
+But its method for avoiding that is to explore the product's domain, invent
+a *signature* element, derive a colour world, and choose a typeface —
+and **Drydock can do none of those things.** Prototypes compile against a
+fixed design system with fixed tokens, a fixed type scale and a fixed
+palette. That is the entire point: output should look like Wonderful, not
+like a bespoke direction. Following `interface-design`'s core loop would
+produce prototypes that fail the guardrails by design.
+
+Its craft sections were kept (hierarchy runs on three levers not size
+alone; tabular figures on changing numbers; concentric radii; never
+`transition: all` — a third independent source for that gate). Its
+`Use What Exists` section is worth noting separately: native → primitive →
+hand-roll, and system → component → token → utility is an exact
+independent restatement of gates Drydock already enforces.
+
+The resolution worth naming: Drydock's differentiation can't come from
+inventing a visual direction per screen. It has to come from the screen
+being *right about Wonderful* — the agent lineage, the real components, the
+reviewer's eye. That is a different axis than `interface-design` assumes,
+and the corpus is the evidence for it.
+
+**Two meta-skills have no place in the generator, but one answers an open
+question.** `design-principles` (how to author principles) and
+`design-qa-checklist` (how to author QA checklists) describe processes for
+humans. `design-principles` is, however, exactly the right tool for the gap
+flagged below: the agentic-UX document cites foundational principles that
+have never been supplied to this repo.
+
+**Prompt cost.** The system prompt is now substantially longer than the
+original rules-and-example prompt. That is the thing the corpus warned
+about — more general rules can dilute the Wonderful-specific signal. The
+export script reports the current approximate token count, and
+`apps/server/scripts/goldenPrompt.ts` is the instrument for measuring the
+quality tradeoff once a real key exists.
+
+## What's not in v0
+
+- **The corpus is still not a scored benchmark.** The critique instrument
+  now gives a generated screen a structured self-review, but that is the
+  model marking its own homework. Nothing yet runs the critique as an
+  independent pass against the corpus and produces a number, which is what
+  would finally answer "is Drydock's output better than what we ship
+  today". The instrument is built; the scoring harness is not.
+- **The underlying agentic principles are still missing.** The agentic-UX
+  document is the *applied* layer of a broader principle set. The document
+  defining that set has never been supplied, so what is encoded here rests
+  on foundations this repo cannot see.
+- Whether the model's self-rating is *accurate* is not itself checked.
+  These are self-reports, not verified facts — see the note on
+  `DesignReview` in `packages/prototype/src/types.ts`.
+- The heuristics in `designGuardrails.ts` are regex-based, not an AST, and
+  say so in their own comments: they under-report rather than
+  over-report where a plain-text check genuinely can't tell (a `<label>`
+  wrapping an input across multiple lines, for instance), because a gate
+  that blocks should err toward missing a real violation rather than
+  rejecting valid work.
+- No mechanism yet aggregates `knownGaps`, `rubric.critique`, or weak ratings
+  across generations to surface promotion candidates for the gate layer.
+  Per Finding 1 this is now lower priority than it looked: the corpus
+  suggests the next real win is in the prompt, not the gates.

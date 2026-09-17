@@ -1,4 +1,6 @@
+import type { DesignReview } from "@drydock/prototype";
 import OpenAI from "openai";
+import { ALL_CRITIQUE_DIMENSIONS } from "./designCritique.ts";
 
 /**
  * The model, not hard-coded: an internal tool's code-gen quality/cost trade-off
@@ -16,21 +18,36 @@ const getApiKey = (): string => {
 
 let shared: OpenAI | null = null;
 
+type OpenAiClientOptions = NonNullable<ConstructorParameters<typeof OpenAI>[0]>;
+
+export const getOpenAiClientOptions = (): OpenAiClientOptions => {
+	const baseURL = process.env.OPENAI_BASE_URL?.trim();
+	return {
+		apiKey: getApiKey(),
+		timeout: 120_000,
+		...(baseURL ? { baseURL } : {}),
+	};
+};
+
 /** The process-wide client — a `get*` since the SDK's own instance holds no
  * per-request state worth isolating, unlike `apps/server/src/db/connect.ts`'s
  * pool (which tests deliberately need their own copy of). */
 export const getOpenAiClient = (): OpenAI => {
-	shared ??= new OpenAI({ apiKey: getApiKey(), timeout: 120_000 });
+	shared ??= new OpenAI(getOpenAiClientOptions());
 	return shared;
 };
 
 export const getModel = (): string => process.env.OPENAI_MODEL?.trim() || DEFAULT_MODEL;
 
+const GUARDRAIL_FIT_RATING_ENUM = ["strong", "medium", "weak"] as const;
+
 /**
- * The shape the model must return — a file array, nothing else. Enforced by
- * the API itself (`response_format: json_schema, strict: true`), which is
- * what makes `JSON.parse` on the response trustworthy without a hand-rolled
- * shape check before `validateFileTree` gets to do the check that matters.
+ * The shape the model must return — a file array plus its own design
+ * self-review (Wonderful Design Guardrails v0's rubric layer; see
+ * `designGuardrails.ts`). Enforced by the API itself
+ * (`response_format: json_schema, strict: true`), which is what makes
+ * `JSON.parse` on the response trustworthy without a hand-rolled shape check
+ * before `validateFileTree` gets to do the check that matters.
  *
  * No `entryPoint` field: the caller (not the model) decides what the entry
  * point is named — the prompt tells the model exactly which path to use for
@@ -52,13 +69,64 @@ export const PROTOTYPE_TREE_SCHEMA = {
 				additionalProperties: false,
 			},
 		},
+		review: {
+			type: "object",
+			properties: {
+				purpose: { type: "string" },
+				primaryAction: { type: "string" },
+				componentsUsed: { type: "array", items: { type: "string" } },
+				mockData: { type: "string" },
+				knownGaps: { type: "array", items: { type: "string" } },
+				rubric: {
+					type: "object",
+					properties: {
+						contrastLadder: { type: "string", enum: GUARDRAIL_FIT_RATING_ENUM },
+						spacingRhythm: { type: "string", enum: GUARDRAIL_FIT_RATING_ENUM },
+						affordanceClarity: { type: "string", enum: GUARDRAIL_FIT_RATING_ENUM },
+						containerDepth: { type: "string", enum: GUARDRAIL_FIT_RATING_ENUM },
+						componentProvenance: { type: "string", enum: GUARDRAIL_FIT_RATING_ENUM },
+						agentLineage: { type: "string" },
+						stateCoverage: { type: "string" },
+						critique: {
+							type: "array",
+							items: {
+								type: "object",
+								properties: {
+									dimension: { type: "string", enum: ALL_CRITIQUE_DIMENSIONS },
+									observation: { type: "string" },
+									problem: { type: "string" },
+									fix: { type: "string" },
+									severity: { type: "string", enum: ["minor", "major"] },
+								},
+								required: ["dimension", "observation", "problem", "fix", "severity"],
+								additionalProperties: false,
+							},
+						},
+					},
+					required: [
+						"contrastLadder",
+						"spacingRhythm",
+						"affordanceClarity",
+						"containerDepth",
+						"componentProvenance",
+						"agentLineage",
+						"stateCoverage",
+						"critique",
+					],
+					additionalProperties: false,
+				},
+			},
+			required: ["purpose", "primaryAction", "componentsUsed", "mockData", "knownGaps", "rubric"],
+			additionalProperties: false,
+		},
 	},
-	required: ["files"],
+	required: ["files", "review"],
 	additionalProperties: false,
 } as const;
 
 export type RawPrototypeTree = {
 	files: { path: string; contents: string }[];
+	review: DesignReview;
 };
 
 /**

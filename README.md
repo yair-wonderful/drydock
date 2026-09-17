@@ -86,8 +86,15 @@ invisible unless you show it.
 | `apps/web/src/anchoring/` | Comment anchoring by element identity, resolving to `attached` / `needsReview` / `orphaned` |
 | `apps/web/src/blackbird/` | Packaging a compiled prototype as an infinite-canvas frame |
 | `apps/web/blackbird-join/` | An idempotent patcher that joins the engine to a Blackbird checkout without modifying its canvas, contract, comments or service worker |
+| `scripts/exportGuardrails.ts` | `pnpm run export:guardrails` — packages the guardrails (prompt, gates as data, review corpus, rationale) for a team implementing them outside this repo |
 | `scripts/fetchDesignSystem.ts` | The only link to the monorepo |
 | `scripts/checkDesignSystemStaleness.ts` | Reports whether the vendored pin is behind `libs/ui`/`libs/theme` |
+| `apps/server/src/agent/` | The agent loop: generate a prototype from a prompt, or rewrite the current one per an instruction, through OpenAI structured outputs |
+| `apps/server/src/agent/agenticUxGuardrails.ts` | The user-as-manager layer: traceability, agency affordances, reversibility, the clean handoff — what makes a screen read as Wonderful before any styling does |
+| `apps/server/src/agent/designCritique.ts` | The critique instrument: 21 dimensions from five internal `critique-*` skills, filled in against every generation as Observation → Problem → Fix |
+| `apps/server/src/agent/uxFoundations.ts` | What survived filtering 21 general design skills for rules concrete enough to act on mid-generation |
+| `apps/server/src/agent/designReviewCorpus.ts` | 31 real Wonderful design-review pins, transcribed verbatim — the labelled record the rubric and prompt are derived from |
+| `docs/wonderful-design-guardrails.md` | Wonderful Design Guardrails — the hard gates and rubric the agent loop is held to, what the review corpus changed about both, and why |
 
 ## The one real limitation
 
@@ -104,7 +111,11 @@ exists (`apps/server`, verified end-to-end through a real browser against
 Postgres — 8 checks) and is wired into the Blackbird join (`apps/web/blackbird-join`
 — compile, comments, multiplayer sync, and loading a real persisted prototype
 by id are each independently verified, 4-6 checks apiece). The agent loop
-(`/api/agent/generate`, `/api/agent/rewrite`) is built — see
+(`/api/agent/generate`, `/api/agent/rewrite` — generate from a prompt,
+rewrite per an instruction) is built and held to Wonderful Design
+Guardrails v0 (see `docs/wonderful-design-guardrails.md`) — see
 `docs/local-dev-handoff.md` for how to run it locally and
 `docs/harbor-research-and-plan.md` for the research and phased plan behind
-the whole project.
+the whole project. `apps/server/scripts/goldenPrompt.ts` and
+`apps/web/scripts/verify-agent-loop.ts` are the intended before/after and
+end-to-end checks once a real `OPENAI_API_KEY` is available.

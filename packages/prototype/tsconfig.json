@@ -10,8 +10,7 @@
 		"verbatimModuleSyntax": true,
 		"skipLibCheck": true,
 		"types": ["node"],
-		"resolveJsonModule": true,
 		"allowImportingTsExtensions": true
 	},
-	"include": ["src", "scripts"]
+	"include": ["src"]
 }

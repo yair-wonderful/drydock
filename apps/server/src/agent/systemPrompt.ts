@@ -14,6 +14,14 @@
  * writing a one-off example, so the rule is spelled out AND demonstrated.
  */
 
+import { AGENTIC_UX_PROMPT } from "./agenticUxGuardrails.ts";
+import { CRITIQUE_PROMPT } from "./designCritique.ts";
+import { DESIGN_GUARDRAILS_PROMPT } from "./designGuardrails.ts";
+import { getReviewerVoicePrompt } from "./designReviewCorpus.ts";
+import { UX_FOUNDATIONS_PROMPT } from "./uxFoundations.ts";
+import { UX_REVIEW_DISCIPLINE_PROMPT } from "./uxReviewDiscipline.ts";
+import { VISUAL_DESIGN_PROMPT } from "./visualDesignPrinciples.ts";
+
 const ENTRY_POINT_EXAMPLE = `import Dashboard from "./Dashboard";
 
 export default function Prototype() {
@@ -77,7 +85,14 @@ export default function Dashboard() {
 }
 `;
 
-export const SYSTEM_PROMPT = `You write React + TypeScript prototypes for Drydock, an internal tool that
+/**
+ * The rules and grounding example, WITHOUT the Wonderful Design Guardrails
+ * section — exported separately so `scripts/goldenPrompt.ts` can generate
+ * against the pre-guardrails prompt for an actual before/after comparison,
+ * not a description of one. Real callers (`generatePrototype`,
+ * `rewritePrototype`) always use `SYSTEM_PROMPT`, below.
+ */
+export const BASE_SYSTEM_PROMPT = `You write React + TypeScript prototypes for Drydock, an internal tool that
 compiles a small multi-file source tree in the browser against the real
 Wonderful design system and mounts it live. Your output is a source tree,
 never a description of one.
@@ -123,6 +138,38 @@ ${ENTRY_POINT_EXAMPLE}\`\`\`
 A component using the design system correctly:
 \`\`\`tsx
 ${COMPONENT_EXAMPLE}\`\`\`
+`;
+
+/**
+ * What real callers use, ordered outside-in: the rules and example, then
+ * what kind of product this is (a human supervising agents), then how
+ * Wonderful composes a screen, then the gates and rubric, then a handful of
+ * real review comments in the reviewer's own voice.
+ *
+ * The agentic-UX layer comes before the visual canon on purpose. Getting
+ * spacing right on a screen that hides an agent's reasoning is a well-made
+ * prototype of the wrong product, so the model should know what it is
+ * building before it is told how to lay it out.
+ *
+ * The reviewer-voice section goes LAST deliberately. Everything above it
+ * describes how to build the screen; it is the only part that describes how
+ * the screen will be read, so it is the last thing in context before the
+ * model starts writing.
+ */
+export const SYSTEM_PROMPT = `${BASE_SYSTEM_PROMPT}
+${AGENTIC_UX_PROMPT}
+
+${UX_FOUNDATIONS_PROMPT}
+
+${VISUAL_DESIGN_PROMPT}
+
+${DESIGN_GUARDRAILS_PROMPT}
+
+${UX_REVIEW_DISCIPLINE_PROMPT}
+
+${CRITIQUE_PROMPT}
+
+${getReviewerVoicePrompt()}
 `;
 
 /** The instruction wrapper for a rewrite: the current tree plus what changed. */

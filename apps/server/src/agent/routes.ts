@@ -1,8 +1,13 @@
+import type { GenerationResult } from "./generateTree.ts";
 import { asRecord, getOptionalString, getRequiredFiles, getRequiredString } from "../http/body.ts";
 import { withRoute } from "../http/respond.ts";
 import type { Router } from "../http/router.ts";
 import { generatePrototype } from "./generatePrototype.ts";
 import { rewritePrototype } from "./rewritePrototype.ts";
+
+/** Flattens `{ tree, review }` into one response body — the client wants a
+ * tree it can hand to `getTreeFromFiles` directly, with `review` alongside. */
+const getResponseBody = ({ tree, review }: GenerationResult) => ({ ...tree, review });
 
 /**
  * The agent loop's HTTP surface: generate a tree from a prompt, or rewrite an
@@ -19,7 +24,7 @@ export const registerAgentRoutes = (router: Router): void => {
 			const record = asRecord(body);
 			const prompt = getRequiredString(record, "prompt");
 			const entryPoint = getOptionalString(record, "entryPoint");
-			return generatePrototype(prompt, entryPoint);
+			return getResponseBody(await generatePrototype(prompt, entryPoint));
 		}),
 	);
 
@@ -30,7 +35,7 @@ export const registerAgentRoutes = (router: Router): void => {
 			const files = getRequiredFiles(record);
 			const entryPoint = getRequiredString(record, "entryPoint");
 			const instruction = getRequiredString(record, "instruction");
-			return rewritePrototype(files, entryPoint, instruction);
+			return getResponseBody(await rewritePrototype(files, entryPoint, instruction));
 		}),
 	);
 };

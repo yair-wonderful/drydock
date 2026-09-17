@@ -53,3 +53,164 @@ export type ValidatedTree = {
  * make the browser's job harder for no gain on the server's.
  */
 export type Result<T> = { ok: true; value: T } | { ok: false; error: PrototypeValidationError };
+
+/** A subjective self-rating, on the Wonderful Design Guardrails rubric. Never
+ * blocks anything — see `docs/wonderful-design-guardrails.md`. */
+export type GuardrailFitRating = "strong" | "medium" | "weak";
+
+/**
+ * The agent's own account of what it built, attached to every generation —
+ * "Guardrails v0"'s rubric layer. Shown alongside a prototype, never
+ * mechanically enforced: a rating here is a self-report from the model that
+ * wrote the tree, not a verified fact. It exists so a reviewer (human or a
+ * later automated pass) has something concrete to check the work against,
+ * and so repeated patterns in `knownGaps` / weak ratings have somewhere to
+ * accumulate before any of them earns promotion to a hard gate.
+ */
+export type DesignReview = {
+	/** What this screen is for, in one sentence. */
+	purpose: string;
+	/** The one primary action a viewer is meant to take. */
+	primaryAction: string;
+	/** The @wonderful/ui-base components actually used. */
+	componentsUsed: string[];
+	/** What's mocked and how, in one sentence. */
+	mockData: string;
+	/** Things intentionally NOT wired for real — e.g. "permissions not enforced". */
+	knownGaps: string[];
+	rubric: DesignReviewRubric;
+};
+
+/**
+ * The self-assessment axes, derived from what a Wonderful design reviewer
+ * actually flags rather than from first principles — see
+ * `apps/server/src/agent/designReviewCorpus.ts`, a transcription of 31
+ * review comments on four real Wonderful screens, and
+ * `docs/wonderful-design-guardrails.md` for how the axes were chosen.
+ *
+ * The previous axes (`wonderfulFit`, `handoffReadiness`) were replaced
+ * because they were too abstract to act on: a "medium" told a reviewer
+ * nothing about where to look. These five name the specific failure
+ * clusters that account for nearly every real comment, so a weak rating
+ * points at a part of the screen.
+ */
+export type DesignReviewRubric = {
+	/** Does every text and icon sit on the 3-step ladder, and do siblings
+	 * inside one control agree? The single most-flagged failure in the
+	 * corpus (8 of 34 remarks), and it cuts both ways — too light AND too
+	 * dark, sometimes in the same field. */
+	contrastLadder: GuardrailFitRating;
+	/** Did every gap come off the spacing scale, with no zero-gap pairing and
+	 * no dead space? Second most-flagged (6 of 34). */
+	spacingRhythm: GuardrailFitRating;
+	/** Does everything that looks interactive act interactive, and is exactly
+	 * one action styled primary? */
+	affordanceClarity: GuardrailFitRating;
+	/** Is every nested container earning its nesting — no box inside a box
+	 * for its own sake? */
+	containerDepth: GuardrailFitRating;
+	/** Is every part a real @wonderful/ui-base component or an honest
+	 * composition of primitives, with nothing hand-rolled that the design
+	 * system already owns? */
+	componentProvenance: GuardrailFitRating;
+	/**
+	 * Where a reader goes to see WHY an agent concluded what it concluded —
+	 * the path from conclusion back to premise. "No agent output on this
+	 * screen" is a valid answer.
+	 *
+	 * Prose rather than a rating because the not-applicable case is common
+	 * and real: a settings screen has no lineage to show, and a "strong"
+	 * there would be noise. From the agentic-UX guardrails' first principle
+	 * — see `apps/server/src/agent/agenticUxGuardrails.ts`.
+	 */
+	agentLineage: string;
+	/** Which of loading/empty/error/success/disabled/needs-attention are
+	 * covered where relevant, and which are missing.
+	 *
+	 * Kept from the original rubric despite having no corpus support: the
+	 * corpus is static screenshots of one state each, so its silence on
+	 * state coverage is a sampling artifact, not evidence it doesn't
+	 * matter. */
+	stateCoverage: string;
+	/**
+	 * The model's structured critique of its own screen — the findings, not
+	 * a full matrix. See `CritiqueFinding`, and
+	 * `apps/server/src/agent/designCritique.ts` for the dimension
+	 * vocabulary and where it came from.
+	 *
+	 * The most useful field in the rubric: it turns the model's uncertainty
+	 * into the reviewer's agenda instead of hiding it behind a rating.
+	 */
+	critique: CritiqueFinding[];
+};
+
+/**
+ * Which of the five internal `critique-*` skills a finding came through.
+ * Carried so findings can be read grouped the way the skills are organised.
+ */
+export type CritiqueLens =
+	| "visual-hierarchy"
+	| "typography"
+	| "composition"
+	| "affordance"
+	| "information-density";
+
+/**
+ * The 20 dimensions the five `critique-*` skills define, plus
+ * `contrast-ladder`, which comes from the review corpus rather than the
+ * skills — see the note in `apps/server/src/agent/designCritique.ts` on why
+ * WCAG compliance and Wonderful's contrast ladder are not the same check.
+ */
+export type CritiqueDimension =
+	| "entry-point"
+	| "eye-flow"
+	| "weight"
+	| "emphasis"
+	| "scale-usage"
+	| "readability"
+	| "type-consistency"
+	| "token-compliance"
+	| "contrast-ladder"
+	| "balance"
+	| "whitespace"
+	| "rhythm"
+	| "gestalt"
+	| "clickability"
+	| "state-visibility"
+	| "cta-clarity"
+	| "discoverability"
+	| "cognitive-load"
+	| "content-priority"
+	| "scanning-pattern"
+	| "progressive-disclosure";
+
+/**
+ * One self-critique finding, in the Observation → Problem → Fix shape every
+ * one of the five critique skills specifies.
+ *
+ * Findings only: the skills rate all four of their dimensions every time,
+ * but a dimension omitted here means "checked, nothing found". A model made
+ * to emit twenty rows pads nineteen of them, and twenty rows reading "pass"
+ * tell a reviewer nothing the rated axes above don't already say.
+ */
+export type CritiqueFinding = {
+	dimension: CritiqueDimension;
+	/** What is there, stated neutrally — no judgement yet. */
+	observation: string;
+	/** What is broken about it, and why that matters to someone using it. */
+	problem: string;
+	/** The specific change to make, not "improve the spacing". */
+	fix: string;
+	/** `major` would stop a reviewer approving; `minor` is a nit they'd
+	 * mention but not block on. The skills' third rating, `pass`, is
+	 * expressed by the dimension being absent. */
+	severity: "minor" | "major";
+};
+
+/** One mechanically-checked hard-gate failure — see
+ * `apps/server/src/agent/designGuardrails.ts`. */
+export type GuardrailViolation = {
+	rule: string;
+	message: string;
+	file?: string;
+};

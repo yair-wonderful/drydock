@@ -8,6 +8,7 @@
 		"node": ">=22.18"
 	},
 	"scripts": {
+		"export:guardrails": "node scripts/exportGuardrails.ts",
 		"sync:design-system": "node scripts/fetchDesignSystem.ts",
 		"check:design-system": "node scripts/checkDesignSystemStaleness.ts",
 		"predev": "node scripts/checkDesignSystemStaleness.ts || true",

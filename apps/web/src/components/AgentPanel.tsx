@@ -1,4 +1,5 @@
 import { useCallback, useState, type ChangeEvent } from "react";
+import type { CritiqueFinding, DesignReview, DesignReviewRubric } from "@drydock/prototype";
 import { generatePrototype, rewritePrototype } from "../api/agentClient";
 import { ApiError } from "../api/httpClient";
 import type { PrototypeTree } from "../drydock";
@@ -25,6 +26,7 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 	const [prompt, setPrompt] = useState("");
 	const [instruction, setInstruction] = useState("");
 	const [status, setStatus] = useState<AgentStatus>({ state: "idle" });
+	const [review, setReview] = useState<DesignReview | null>(null);
 
 	const handleChangePrompt = useCallback(
 		(event: ChangeEvent<HTMLTextAreaElement>) => setPrompt(event.target.value),
@@ -42,6 +44,7 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 		try {
 			const result = await generatePrototype(trimmed, HARNESS_ENTRY_POINT);
 			onApplyTree(getTreeFromFiles(result.files));
+			setReview(result.review);
 			setStatus({ state: "idle" });
 		} catch (error) {
 			setStatus({ state: "error", message: error instanceof ApiError ? error.message : "generation failed" });
@@ -56,6 +59,7 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 			const files = getFilesFromTree(tree);
 			const result = await rewritePrototype(files, HARNESS_ENTRY_POINT, trimmed);
 			onApplyTree(getTreeFromFiles(result.files));
+			setReview(result.review);
 			setStatus({ state: "idle" });
 			setInstruction("");
 		} catch (error) {
@@ -105,6 +109,75 @@ export default function AgentPanel({ className, tree, onApplyTree }: AgentPanelP
 				<p className="agent-error" role="alert" data-testid="agent-error">
 					{status.message}
 				</p>
+			)}
+			{review && <DesignReviewPanel review={review} />}
+		</div>
+	);
+}
+
+/** One self-critique finding: what's there, what's wrong, what to change. */
+function CritiqueRow({ finding }: { finding: CritiqueFinding }) {
+	return (
+		<li className={`critique-row critique-${finding.severity}`}>
+			<span className="critique-dimension">{finding.dimension}</span> {finding.problem}
+			<div className="muted">{finding.fix}</div>
+		</li>
+	);
+}
+
+/**
+ * The five rated axes, in the order a reviewer scans them — which is
+ * roughly how often each one is the actual problem, per the review corpus
+ * at apps/server/src/agent/designReviewCorpus.ts.
+ */
+const RUBRIC_AXES = [
+	{ key: "contrastLadder", label: "contrast" },
+	{ key: "spacingRhythm", label: "spacing" },
+	{ key: "affordanceClarity", label: "affordance" },
+	{ key: "containerDepth", label: "nesting" },
+	{ key: "componentProvenance", label: "provenance" },
+] as const satisfies readonly { key: keyof DesignReviewRubric; label: string }[];
+
+/**
+ * Wonderful Design Guardrails' rubric layer, shown alongside every
+ * generation — advisory, never blocking. See
+ * docs/wonderful-design-guardrails.md for what each field means and why
+ * this stays a self-report rather than a mechanical check.
+ */
+function DesignReviewPanel({ review }: { review: DesignReview }) {
+	return (
+		<div className="design-review" data-testid="design-review">
+			<h3>design self-review</h3>
+			<dl>
+				<dt>purpose</dt>
+				<dd>{review.purpose}</dd>
+				<dt>primary action</dt>
+				<dd>{review.primaryAction}</dd>
+				<dt>components used</dt>
+				<dd>{review.componentsUsed.join(", ") || "none"}</dd>
+				<dt>mock data</dt>
+				<dd>{review.mockData}</dd>
+				<dt>known gaps</dt>
+				<dd>{review.knownGaps.length > 0 ? review.knownGaps.join("; ") : "none"}</dd>
+			</dl>
+			<div className="design-review-rubric">
+				{RUBRIC_AXES.map(({ key, label }) => (
+					<span key={key} className={`rubric-pill rubric-${review.rubric[key]}`}>
+						{label}: {review.rubric[key]}
+					</span>
+				))}
+			</div>
+			<p className="muted">{review.rubric.agentLineage}</p>
+			<p className="muted">{review.rubric.stateCoverage}</p>
+			{review.rubric.critique.length > 0 && (
+				<div className="design-review-flagged" data-testid="design-review-critique">
+					<h4>self-critique</h4>
+					<ul>
+						{review.rubric.critique.map((finding) => (
+							<CritiqueRow key={`${finding.dimension}-${finding.problem}`} finding={finding} />
+						))}
+					</ul>
+				</div>
 			)}
 		</div>
 	);
