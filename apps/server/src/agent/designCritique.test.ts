@@ -43,6 +43,11 @@ describe("critique dimensions", () => {
 	it("asks for findings only, not a rating for every dimension", () => {
 		assert.match(CRITIQUE_PROMPT, /ONLY dimensions where/);
 	});
+
+	it("points the model at the schema field that actually carries findings", () => {
+		assert.match(CRITIQUE_PROMPT, /`review\.rubric\.critique`/);
+		assert.doesNotMatch(CRITIQUE_PROMPT, /`review\.critique`/);
+	});
 });
 
 describe("critique coverage of the review corpus", () => {

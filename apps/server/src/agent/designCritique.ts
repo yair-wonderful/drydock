@@ -88,7 +88,7 @@ const getDimensionLines = (): string =>
 export const CRITIQUE_PROMPT = `## Critique your own screen before you hand it over
 
 After the tree is written, review it the way a Wonderful designer would and
-report what you find in \`review.critique\`. Report ONLY dimensions where
+report what you find in \`review.rubric.critique\`. Report ONLY dimensions where
 something is actually wrong — a dimension you leave out means you checked it
 and it passed. Padding this list with non-findings makes it useless.
 
